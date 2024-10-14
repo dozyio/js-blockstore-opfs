@@ -1,6 +1,6 @@
 {
-  "name": "js-blockstore-opfs-2",
-  "version": "1.0.0",
+  "name": "js-blockstore-opfs",
+  "version": "0.0.1",
   "main": "index.js",
   "type": "module",
   "devDependencies": {
@@ -15,8 +15,8 @@
     "test": "playwright test"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "dozyio",
+  "license": "MIT",
   "description": "",
   "dependencies": {
     "interface-blockstore": "^5.3.1",
