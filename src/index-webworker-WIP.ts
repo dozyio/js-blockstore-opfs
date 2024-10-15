@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/index.ts
 /**
  * @packageDocumentation
@@ -40,21 +41,20 @@ export class OPFSBlockstore implements Blockstore {
   private readonly deleteManyConcurrency: number
   private opfsRoot!: FileSystemDirectoryHandle
 
-  constructor(init: OPFSBlockstoreInit = {}) {
+  constructor (init: OPFSBlockstoreInit = {}) {
     this.deleteManyConcurrency = init.deleteManyConcurrency ?? 50
     this.getManyConcurrency = init.getManyConcurrency ?? 50
     this.putManyConcurrency = init.putManyConcurrency ?? 50
   }
 
-  async open(): Promise<void> {
+  async open (): Promise<void> {
     this.opfsRoot = await navigator.storage.getDirectory()
-    console.log('OPFS root', this.opfsRoot)
   }
 
-  async close(): Promise<void> {
+  async close (): Promise<void> {
   }
 
-  async put(key: CID, val: Uint8Array): Promise<CID> {
+  async put (key: CID, val: Uint8Array): Promise<CID> {
     const fileHandle = await this.opfsRoot.getFileHandle(key.toString(), { create: true })
     const accessHandle = await fileHandle.createSyncAccessHandle()
 
@@ -69,8 +69,8 @@ export class OPFSBlockstore implements Blockstore {
     return key
   }
 
-  async * putMany(source: AwaitIterable<Pair>): AsyncIterable<CID> {
-    yield* parallelBatch(
+  async * putMany (source: AwaitIterable<Pair>): AsyncIterable<CID> {
+    yield * parallelBatch(
       map(source, ({ cid, block }) => {
         return async () => {
           await this.put(cid, block)
@@ -82,7 +82,7 @@ export class OPFSBlockstore implements Blockstore {
     )
   }
 
-  async get(key: CID): Promise<Uint8Array> {
+  async get (key: CID): Promise<Uint8Array> {
     const fileHandle = await this.opfsRoot.getFileHandle(key.toString(), { create: false })
     const accessHandle = await fileHandle.createSyncAccessHandle()
     const size = accessHandle.getSize()
@@ -93,8 +93,8 @@ export class OPFSBlockstore implements Blockstore {
     return new Uint8Array(dataView.buffer)
   }
 
-  async * getMany(source: AwaitIterable<CID>): AsyncIterable<Pair> {
-    yield* parallelBatch(
+  async * getMany (source: AwaitIterable<CID>): AsyncIterable<Pair> {
+    yield * parallelBatch(
       map(source, key => {
         return async () => {
           return {
@@ -112,12 +112,12 @@ export class OPFSBlockstore implements Blockstore {
    *
    * @param key - CID.
    */
-  async delete(key: CID): Promise<void> {
+  async delete (key: CID): Promise<void> {
     await this.opfsRoot.removeEntry(key.toString())
   }
 
-  async * deleteMany(source: AwaitIterable<CID>): AsyncIterable<CID> {
-    yield* parallelBatch(
+  async * deleteMany (source: AwaitIterable<CID>): AsyncIterable<CID> {
+    yield * parallelBatch(
       map(source, key => {
         return async () => {
           await this.delete(key)
@@ -135,18 +135,17 @@ export class OPFSBlockstore implements Blockstore {
    * @param key - The original CID.
    * @returns A boolean indicating existence.
    */
-  async has(key: CID): Promise<boolean> {
+  async has (key: CID): Promise<boolean> {
     const fileHandle = await this.opfsRoot.getFileHandle(key.toString(), { create: false })
     return (fileHandle !== null)
   }
 
-  /**
-   */
-  async * getAll(): AsyncIterable<Pair> {
+  // eslint-disable-next-line require-yield
+  async * getAll (): AsyncIterable<Pair> {
     throw new Error('not supported')
   }
 
-  async free(): Promise<StorageEstimate> {
+  async free (): Promise<StorageEstimate> {
     return navigator.storage.estimate()
   }
 }

@@ -1,0 +1,7 @@
+src/index-webworker-WIP.ts
+playwright.config.js
+src/setup.ts
+dist/test
+**/*.tsbuildinfo
+.gitignore
+.prettierignore

@@ -12,6 +12,7 @@ Origin Private File System TS/JS blockstore implementation for
 - Benchmarks
 - Webworkers
 - Sharding
+- getAll()
 
 ## OPFS Links
 
