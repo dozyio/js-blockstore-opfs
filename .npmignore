@@ -5,3 +5,5 @@ dist/test
 **/*.tsbuildinfo
 .gitignore
 .prettierignore
+dist/setup.js
+dist/index-webworker-WIP.js
