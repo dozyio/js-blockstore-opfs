@@ -6,7 +6,6 @@ Origin Private File System TS/JS blockstore implementation for
 ## Notes
 
 - OPFS is only supported in the browser.
-- Chrome OPFS storage quota is around 2GB.
 
 ## Todo
 
