@@ -7,10 +7,13 @@ Origin Private File System TS/JS blockstore implementation for
 
 - OPFS is only supported in the browser.
 
+## WIP
+
+- Web workers
+
 ## Todo
 
 - Benchmarks
-- Webworkers
 - Sharding
 - getAll()
 
@@ -19,3 +22,4 @@ Origin Private File System TS/JS blockstore implementation for
 - [Specification](https://fs.spec.whatwg.org/)
 - [MDN](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system)
 - [The origin private file system](https://web.dev/articles/origin-private-file-system)
+- [OFPS Explorer brower plugin](https://chromewebstore.google.com/detail/opfs-explorer/acndjpgkpaclldomagafnognkcgjignd?pli=1)

@@ -1,34 +1,36 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('OPFSBlockstore', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3000')
-    await page.evaluate(async () => {
-      const opfsRoot = await navigator.storage.getDirectory()
-      // @ts-expect-error // entries() is a thing
-      for await (const [name] of opfsRoot.entries()) {
-        await opfsRoot.removeEntry(name)
-      }
-    })
-  })
+test.describe('OPFSBlockstore Main Thread', () => {
+  // test.beforeEach(async ({ page }) => {
+  //   await page.goto('http://localhost:3000')
+  //   await page.evaluate(async () => {
+  //     const opfsRoot = await navigator.storage.getDirectory()
+  //     // @ts-expect-error // entries() is a thing
+  //     for await (const [name] of opfsRoot.entries()) {
+  //       await opfsRoot.removeEntry(name)
+  //     }
+  //   })
+  // })
 
   test('should put and get a block', async ({ page }) => {
     await page.goto('http://localhost:3000')
 
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
       const { CID } = (window as any)
       const { sha256 } = (window as any)
 
-      const blockstore = new OPFSBlockstore()
-      await blockstore.open()
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
 
       const data = new Uint8Array([0, 1, 2, 3])
       const hash = await sha256.digest(data)
       const cid = CID.createV1(0x55, hash)
 
-      await blockstore.put(cid, data)
-      const retrievedData = await blockstore.get(cid)
+      await store.put(cid, data)
+      const retrievedData = await store.get(cid)
 
       return Array.from(retrievedData)
     })
@@ -41,19 +43,21 @@ test.describe('OPFSBlockstore', () => {
 
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
       const { CID } = (window as any)
       const { sha256 } = (window as any)
 
-      const blockstore = new OPFSBlockstore()
-      await blockstore.open()
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
 
       const data = new Uint8Array([4, 5, 6, 7])
       const hash = await sha256.digest(data)
       const cid = CID.createV1(0x55, hash)
 
-      const existsBefore = await blockstore.has(cid)
-      await blockstore.put(cid, data)
-      const existsAfter = await blockstore.has(cid)
+      const existsBefore = await store.has(cid)
+      await store.put(cid, data)
+      const existsAfter = await store.has(cid)
 
       return { existsBefore, existsAfter }
     })
@@ -67,20 +71,22 @@ test.describe('OPFSBlockstore', () => {
 
     const exists = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
       const { CID } = (window as any)
       const { sha256 } = (window as any)
 
-      const blockstore = new OPFSBlockstore()
-      await blockstore.open()
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
 
       const data = new Uint8Array([8, 9, 10, 11])
       const hash = await sha256.digest(data)
       const cid = CID.createV1(0x55, hash)
 
-      await blockstore.put(cid, data)
-      await blockstore.delete(cid)
+      await store.put(cid, data)
+      await store.delete(cid)
 
-      return blockstore.has(cid)
+      return store.has(cid)
     })
 
     expect(exists).toBe(false)
@@ -91,11 +97,13 @@ test.describe('OPFSBlockstore', () => {
 
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
       const { CID } = (window as any)
       const { sha256 } = (window as any)
 
-      const blockstore = new OPFSBlockstore()
-      await blockstore.open()
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
 
       const data = new Uint8Array([4, 5, 6, 7])
       const hash = await sha256.digest(data)
@@ -103,7 +111,7 @@ test.describe('OPFSBlockstore', () => {
 
       // Attempt to get the block, which should not exist
       try {
-        await blockstore.get(cid)
+        await store.get(cid)
         // If no error is thrown, return null
         return null
       } catch (error: any) {
@@ -121,18 +129,20 @@ test.describe('OPFSBlockstore', () => {
 
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
       const { CID } = (window as any)
       const { sha256 } = (window as any)
 
-      const blockstore = new OPFSBlockstore()
-      await blockstore.open()
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
 
       const data = new Uint8Array([8, 9, 10, 11])
       const hash = await sha256.digest(data)
       const cid = CID.createV1(0x55, hash)
 
       try {
-        await blockstore.delete(cid)
+        await store.delete(cid)
         // If no error is thrown, return null
         return null
       } catch (error: any) {
@@ -150,12 +160,14 @@ test.describe('OPFSBlockstore', () => {
 
     const estimate = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
 
-      const blockstore = new OPFSBlockstore()
-      await blockstore.open()
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
 
       // Call the free() method
-      return blockstore.free()
+      return store.free()
     })
 
     // Verify that estimate is an object
@@ -170,16 +182,19 @@ test.describe('OPFSBlockstore', () => {
     expect(typeof estimate.quota).toBe('number')
     expect(typeof estimate.usage).toBe('number')
   })
+
   test('should put and get multiple blocks using putMany and getMany', async ({ page }) => {
     await page.goto('http://localhost:3000')
 
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
       const { CID } = (window as any)
       const { sha256 } = (window as any)
 
-      const blockstore = new OPFSBlockstore()
-      await blockstore.open()
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
 
       // Prepare multiple blocks
       const dataBlocks = [
@@ -199,14 +214,14 @@ test.describe('OPFSBlockstore', () => {
 
       // Put many blocks
       const putResults = []
-      for await (const cid of blockstore.putMany(pairs)) {
+      for await (const cid of store.putMany(pairs)) {
         putResults.push(cid.toString())
       }
 
       // Get many blocks
       const cids = pairs.map((pair) => pair.cid)
       const getResults = []
-      for await (const { cid, block } of blockstore.getMany(cids)) {
+      for await (const { cid, block } of store.getMany(cids)) {
         getResults.push({
           cid: cid.toString(),
           block: Array.from(block)
@@ -246,11 +261,13 @@ test.describe('OPFSBlockstore', () => {
 
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
       const { CID } = (window as any)
       const { sha256 } = (window as any)
 
-      const blockstore = new OPFSBlockstore()
-      await blockstore.open()
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
 
       // Prepare multiple blocks
       const dataBlocks = [
@@ -270,20 +287,20 @@ test.describe('OPFSBlockstore', () => {
 
       // Put many blocks
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      for await (const cid of blockstore.putMany(pairs)) {
+      for await (const _ of store.putMany(pairs)) {
         // Blocks stored
       }
 
       // Delete many blocks
       const cids = pairs.map((pair) => pair.cid)
       const deleteResults = []
-      for await (const cid of blockstore.deleteMany(cids)) {
+      for await (const cid of store.deleteMany(cids)) {
         deleteResults.push(cid.toString())
       }
 
       // Check if blocks still exist
       const hasResults = await Promise.all(
-        cids.map((cid) => blockstore.has(cid))
+        cids.map((cid) => store.has(cid))
       )
 
       return {
@@ -314,11 +331,13 @@ test.describe('OPFSBlockstore', () => {
 
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
       const { CID } = (window as any)
       const { sha256 } = (window as any)
 
-      const blockstore = new OPFSBlockstore()
-      await blockstore.open()
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
 
       const maxDataSize = 3 * 1024 * 1024 * 1024 // 3 GB
       let totalDataWritten = 0
@@ -342,7 +361,7 @@ test.describe('OPFSBlockstore', () => {
           const cid = CID.createV1(0x55, hash)
 
           // Attempt to put the block
-          await blockstore.put(cid, data)
+          await store.put(cid, data)
 
           totalDataWritten += blockSize
         }

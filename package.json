@@ -33,10 +33,11 @@
     }
   },
   "scripts": {
-    "dev": "vite test/index.html",
-    "test": "playwright test",
-    "build": "aegir build",
-    "lint": "aegir lint --fix"
+    "dev": "vite",
+    "test": "playwright test --config playwright.config.ts test/mainthread.spec.ts",
+    "test:ww": "npm run build && playwright test --config playwright-ww.config.ts test/webworker.spec.ts",
+    "test:ui": "playwright test --ui",
+    "build": "tsc && vite build"
   },
   "dependencies": {
     "interface-blockstore": "^5.3.1",
@@ -47,10 +48,10 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
-    "aegir": "^44.1.4",
     "playwright": "^1.48.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",
-    "vite": "^5.4.9"
+    "vite": "^5.4.9",
+    "vite-plugin-dts": "^4.2.4"
   }
 }

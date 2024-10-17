@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>OPFSBlockstore Web Worker Test</title>
+</head>
+<body>
+  <script type="module" src="/src/setup.ts"></script>
+  <script>
+    // Initialize the web worker
+    const worker = new Worker("opfs-worker.js", { type: "module" });
+
+    // Communication mechanism
+    const pendingRequests = new Map();
+    let requestId = 0;
+
+    worker.onmessage = (event) => {
+      const { id, result, error } = event.data;
+      const { resolve, reject } = pendingRequests.get(id);
+      pendingRequests.delete(id);
+      if (error) {
+        reject(new Error(error));
+      } else {
+        resolve(result);
+      }
+    };
+
+    // Expose methods to the window for testing
+    window.callWorkerMethod = (method, params = {}) => {
+      return new Promise((resolve, reject) => {
+        const id = requestId++;
+        pendingRequests.set(id, { resolve, reject });
+        worker.postMessage({ id, method, params });
+      });
+    };
+
+    // Open the blockstore
+    window.callWorkerMethod('open').catch(console.error);
+  </script>
+</body>
+</html>
+
