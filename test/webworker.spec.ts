@@ -27,6 +27,7 @@ test.describe('OPFSBlockstore WebWorker', () => {
 
       // @ts-expect-error // callWorkerMethod is a thing
       await window.callWorkerMethod('open')
+
       // @ts-expect-error // callWorkerMethod is a thing
       await window.callWorkerMethod('put', {
         key: cid.toString(),
@@ -127,6 +128,9 @@ test.describe('OPFSBlockstore WebWorker', () => {
       const hash = await sha256.digest(data)
       const cid = CID.createV1(0x55, hash)
 
+      // @ts-expect-error // callWorkerMethod is a thing
+      await window.callWorkerMethod('open')
+
       // Attempt to get the block, which should not exist
       try {
         // Get data
@@ -155,6 +159,9 @@ test.describe('OPFSBlockstore WebWorker', () => {
       const data = new Uint8Array([8, 9, 10, 11])
       const hash = await sha256.digest(data)
       const cid = CID.createV1(0x55, hash)
+
+      // @ts-expect-error // callWorkerMethod is a thing
+      await window.callWorkerMethod('open')
 
       try {
         // @ts-expect-error // callWorkerMethod is a thing

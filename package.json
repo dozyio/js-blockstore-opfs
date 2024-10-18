@@ -34,8 +34,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "test": "playwright test --config playwright.config.ts test/mainthread.spec.ts",
-    "test:ww": "npm run build && playwright test --config playwright-ww.config.ts test/webworker.spec.ts",
+    "test": "npm run test:mainthread && npm run test:ww",
+    "test:mainthread": "npm run build && playwright test test/mainthread.spec.ts",
+    "test:ww": "npm run build && playwright test test/webworker.spec.ts",
     "test:ui": "playwright test --ui",
     "build": "tsc && vite build"
   },
