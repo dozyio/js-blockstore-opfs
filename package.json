@@ -37,6 +37,7 @@
     "test": "playwright test --config playwright.config.ts test/mainthread.spec.ts",
     "test:ww": "npm run build && playwright test --config playwright-ww.config.ts test/webworker.spec.ts",
     "test:ui": "playwright test --ui",
+    "test:aegir": "aegir test",
     "build": "tsc && vite build"
   },
   "dependencies": {
@@ -48,6 +49,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
+    "@types/mocha": "^10.0.9",
+    "aegir": "^44.1.4",
+    "interface-blockstore-tests": "^7.0.1",
     "playwright": "^1.48.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",

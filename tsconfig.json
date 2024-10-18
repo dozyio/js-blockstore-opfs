@@ -6,7 +6,7 @@
     "strict": true,
     "esModuleInterop": true,
     "outDir": "dist",
-    "types": ["node", "@playwright/test"],
+    "types": ["node", "@playwright/test", "mocha"],
     "useDefineForClassFields": true,
     "skipLibCheck": true,
     "moduleResolution": "bundler",
