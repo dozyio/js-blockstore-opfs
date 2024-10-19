@@ -3,14 +3,14 @@ import { type PlaywrightTestConfig, devices } from '@playwright/test'
 const config: PlaywrightTestConfig = {
   projects: [
     /* Test against desktop browsers */
-    // {
-    //   name: 'chromium',
-    //   use: { ...devices['Desktop Chrome'] },
-    // },
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] }
+    },
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
+      use: { ...devices['Desktop Firefox'] }
+    }
     // Webkit disabled - https://github.com/web-platform-tests/interop/issues/172#issuecomment-1265925763
     // {
     //   name: 'webkit',
@@ -26,7 +26,8 @@ const config: PlaywrightTestConfig = {
     port: 3000,
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     reuseExistingServer: !process.env.CI
-  }
+  },
+  workers: 1
 }
 
 export default config

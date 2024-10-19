@@ -1,20 +1,15 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('OPFSBlockstore Main Thread', () => {
-  // test.beforeEach(async ({ page }) => {
-  //   await page.goto('http://localhost:3000')
-  //   await page.evaluate(async () => {
-  //     const opfsRoot = await navigator.storage.getDirectory()
-  //     // @ts-expect-error // entries() is a thing
-  //     for await (const [name] of opfsRoot.entries()) {
-  //       await opfsRoot.removeEntry(name)
-  //     }
-  //   })
-  // })
+  const pageMainThread = 'http://localhost:3000/test-mainthread.html'
+
+  test.beforeEach(async ({ page }) => {
+    // page.on('console', msg => { console.log(msg.text()) })
+
+    await page.goto(pageMainThread)
+  })
 
   test('should put and get a block', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
       const { OPFSMainThreadFS } = (window as any)
@@ -39,8 +34,6 @@ test.describe('OPFSBlockstore Main Thread', () => {
   })
 
   test('should check existence of a block', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
       const { OPFSMainThreadFS } = (window as any)
@@ -67,7 +60,7 @@ test.describe('OPFSBlockstore Main Thread', () => {
   })
 
   test('should delete a block', async ({ page }) => {
-    await page.goto('http://localhost:3000')
+    await page.goto(pageMainThread)
 
     const exists = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
@@ -93,8 +86,6 @@ test.describe('OPFSBlockstore Main Thread', () => {
   })
 
   test('should throw when getting a block that does not exist', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
       const { OPFSMainThreadFS } = (window as any)
@@ -125,8 +116,6 @@ test.describe('OPFSBlockstore Main Thread', () => {
   })
 
   test('should throw then deleting a block that does not exist', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
       const { OPFSMainThreadFS } = (window as any)
@@ -156,8 +145,6 @@ test.describe('OPFSBlockstore Main Thread', () => {
   })
 
   test('should return storage estimate with quota and usage', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
     const estimate = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
       const { OPFSMainThreadFS } = (window as any)
@@ -184,8 +171,6 @@ test.describe('OPFSBlockstore Main Thread', () => {
   })
 
   test('should put and get multiple blocks using putMany and getMany', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
       const { OPFSMainThreadFS } = (window as any)
@@ -257,8 +242,6 @@ test.describe('OPFSBlockstore Main Thread', () => {
   })
 
   test('should delete multiple blocks using deleteMany', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
       const { OPFSMainThreadFS } = (window as any)
@@ -325,10 +308,80 @@ test.describe('OPFSBlockstore Main Thread', () => {
     }
   })
 
+  test('should retrieve all blocks using getAll', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { OPFSBlockstore } = window as any
+      const { OPFSMainThreadFS } = window as any
+      const { CID } = window as any
+      const { sha256 } = window as any
+
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
+
+      // Prepare multiple blocks
+      const dataBlocks = [
+        new Uint8Array([24, 25, 26, 27]),
+        new Uint8Array([28, 29, 30, 31]),
+        new Uint8Array([32, 33, 34, 35])
+      ]
+
+      // Create CIDs and Pairs
+      const pairs = await Promise.all(
+        dataBlocks.map(async (data) => {
+          const hash = await sha256.digest(data)
+          const cid = CID.createV1(0x55, hash) // 0x55 is the multicodec code for 'raw'
+          return { cid, block: data }
+        })
+      )
+
+      // Put many blocks
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for await (const _ of store.putMany(pairs)) {
+        // Blocks stored
+      }
+
+      // Use getAll to retrieve all blocks
+      const getAllResults = []
+      for await (const { cid, block } of store.getAll()) {
+        getAllResults.push({
+          cid: cid.toString(),
+          block: Array.from(block)
+        })
+      }
+
+      // Return the stored CIDs and data blocks for verification
+      const storedCids = pairs.map((pair) => pair.cid.toString())
+      const storedBlocks = pairs.map((pair) => Array.from(pair.block))
+
+      return {
+        getAllResults,
+        storedCids,
+        storedBlocks
+      }
+    })
+
+    // Verify that getAllResults match the original data
+    expect(result.getAllResults.length).toBe(result.storedCids.length)
+
+    // Create a map from CID to block in getAllResults
+    const getAllCidToBlock = new Map()
+    for (const item of result.getAllResults) {
+      getAllCidToBlock.set(item.cid, item.block)
+    }
+
+    // Verify that each stored CID and block is in getAllResults
+    for (let i = 0; i < result.storedCids.length; i++) {
+      const cid = result.storedCids[i]
+      const block = result.storedBlocks[i]
+
+      expect(getAllCidToBlock.has(cid)).toBe(true)
+      expect(getAllCidToBlock.get(cid)).toEqual(block)
+    }
+  })
+
   // skipped to stop thrashing storage
   test.skip('should handle writing more data than the storage quota allows', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
       const { OPFSMainThreadFS } = (window as any)
@@ -366,7 +419,11 @@ test.describe('OPFSBlockstore Main Thread', () => {
           totalDataWritten += blockSize
         }
       } catch (error: any) {
-        errorOccurred = error.message || error.toString()
+        if (error.message !== undefined && error.message !== null) {
+          errorOccurred = error.message
+        } else {
+          errorOccurred = error.toString()
+        }
       }
 
       return {
@@ -376,8 +433,8 @@ test.describe('OPFSBlockstore Main Thread', () => {
     })
 
     // Log the results
-    // console.log(`Total Data Written: ${result.totalDataWritten} bytes`);
-    if (result.errorOccurred) {
+    // console.log(`Total Data Written: ${result.totalDataWritten} bytes`)
+    if (result.errorOccurred !== undefined && result.errorOccurred !== null) {
       // Verify that an error occurred due to quota exceedance
       expect(result.errorOccurred).toContain('QuotaExceededError')
     } else {

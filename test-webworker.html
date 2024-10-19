@@ -7,13 +7,13 @@
   <script type="module" src="/src/setup.ts"></script>
   <script>
     // Initialize the web worker
-    const worker = new Worker("opfs-worker.js", { type: "module" });
+    window.worker = new Worker("opfs-worker.js", { type: "module" });
 
     // Communication mechanism
     const pendingRequests = new Map();
     let requestId = 0;
 
-    worker.onmessage = (event) => {
+    window.worker.onmessage = (event) => {
       const { id, result, error } = event.data;
       const { resolve, reject } = pendingRequests.get(id);
       pendingRequests.delete(id);

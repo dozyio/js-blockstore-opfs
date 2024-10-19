@@ -34,21 +34,29 @@
   },
   "scripts": {
     "dev": "vite",
-    "test": "npm run test:mainthread && npm run test:ww",
+    "test": "npm run test:aegir && npm run test:mainthread && npm run test:ww",
     "test:mainthread": "npm run build && playwright test test/mainthread.spec.ts",
     "test:ww": "npm run build && playwright test test/webworker.spec.ts",
     "test:ui": "playwright test --ui",
-    "build": "tsc && vite build"
+    "test:aegir": "npm run test:aegir:chromium && npm run test:aegir:firefox",
+    "test:aegir:firefox": "aegir test -- --browser firefox",
+    "test:aegir:chromium": "aegir test -- --browser chromium",
+    "build": "tsc && vite build",
+    "lint": "aegir lint --fix"
   },
   "dependencies": {
-    "interface-blockstore": "^5.3.1",
-    "interface-store": "^6.0.2",
     "it-map": "^3.1.1",
     "it-parallel-batch": "^3.0.6",
     "multiformats": "^13.3.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
+    "@types/mocha": "^10.0.9",
+    "aegir": "^44.1.4",
+    "globals": "^15.11.0",
+    "interface-blockstore": "^5.3.1",
+    "interface-blockstore-tests": "^7.0.1",
+    "interface-store": "^6.0.2",
     "playwright": "^1.48.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",

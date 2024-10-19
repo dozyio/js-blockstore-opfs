@@ -1,12 +1,12 @@
 // src/web-worker-fs.ts
-import { type Pair } from 'interface-blockstore'
-import { type AwaitIterable, DeleteFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
+import { type Blockstore, type Pair } from 'interface-blockstore'
+import { type AwaitIterable, DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
-import type { OPFSFileSystem, OPFSBlockstoreInit } from '.'
-import type { CID } from 'multiformats/cid'
+import { CID } from 'multiformats/cid'
+import type { OPFSBlockstoreInit } from '.'
 
-export class OPFSWebWorkerFS implements OPFSFileSystem {
+export class OPFSWebWorkerFS implements Blockstore {
   private readonly putManyConcurrency: number
   private readonly getManyConcurrency: number
   private readonly deleteManyConcurrency: number
@@ -42,14 +42,15 @@ export class OPFSWebWorkerFS implements OPFSFileSystem {
    * @throws PutFailedError
    * @throws QuotaExceededError
    */
-  async put (key: CID, val: ArrayBuffer | ArrayBufferView): Promise<CID> {
+  async put (key: CID, val: ArrayBuffer): Promise<CID> {
     try {
       const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: true })
-      // @ts-expect-error: fileHandle.createSyncAccessHandle()
+      // @ts-expect-error: createSyncAccessHandle() is available in web workers
       const accessHandle = await fileHandle.createSyncAccessHandle()
 
       const n = accessHandle.write(val, { at: 0 })
       if (n !== val.byteLength) {
+        accessHandle.close()
         throw new Error(`write length ${n} !== ${val.byteLength}`)
       }
 
@@ -77,12 +78,14 @@ export class OPFSWebWorkerFS implements OPFSFileSystem {
   async get (key: CID): Promise<Uint8Array> {
     try {
       const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: false })
-      // @ts-expect-error: fileHandle.createSyncAccessHandle()
+      // @ts-expect-error: createSyncAccessHandle() is available in web workers
       const accessHandle = await fileHandle.createSyncAccessHandle()
       const size = accessHandle.getSize()
 
       const dataView = new DataView(new ArrayBuffer(size))
       accessHandle.read(dataView)
+
+      accessHandle.close()
 
       return new Uint8Array(dataView.buffer)
     } catch (err) {
@@ -146,10 +149,48 @@ export class OPFSWebWorkerFS implements OPFSFileSystem {
     return true
   }
 
-  /**
-   */
-  // eslint-disable-next-line require-yield
   async * getAll (): AsyncIterable<Pair> {
-    throw new Error('not supported')
+    try {
+      // @ts-expect-error: this.bsRoot.entries() is a thing
+      for await (const [name, handle] of this.bsRoot.entries()) {
+        if (handle.kind === 'file') {
+          let cid: CID
+          try {
+            cid = CID.parse(name)
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn(`Skipping invalid CID filename: ${name}`)
+            continue
+          }
+
+          try {
+            const fileHandle = await this.bsRoot.getFileHandle(name, { create: false })
+            // @ts-expect-error: fileHandle.createSyncAccessHandle()
+            const accessHandle = await fileHandle.createSyncAccessHandle()
+            const size = accessHandle.getSize()
+
+            const dataView = new DataView(new ArrayBuffer(size))
+            accessHandle.read(dataView)
+
+            accessHandle.close()
+
+            yield { cid, block: new Uint8Array(dataView.buffer) }
+          } catch (err) {
+            throw new GetFailedError(String(err))
+          }
+        }
+      }
+    } catch (err) {
+      throw new GetFailedError(String(err))
+    }
+  }
+
+  async deleteAll (): Promise<void> {
+    if ('remove' in FileSystemFileHandle.prototype) {
+      // @ts-expect-error: remove() is a thing in Chrome
+      await this.bsRoot.remove({ recursive: true })
+    } else {
+      await this.opfsRoot.removeEntry(this.path, { recursive: true })
+    }
   }
 }

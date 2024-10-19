@@ -1,12 +1,12 @@
 // src/main-thread-fs.ts
-import { type Pair } from 'interface-blockstore'
-import { type AwaitIterable, DeleteFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
+import { type Blockstore, type Pair } from 'interface-blockstore'
+import { type AwaitIterable, DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
-import type { OPFSFileSystem, OPFSBlockstoreInit } from '.'
-import type { CID } from 'multiformats/cid'
+import { CID } from 'multiformats/cid'
+import type { OPFSBlockstoreInit } from '.'
 
-export class OPFSMainThreadFS implements OPFSFileSystem {
+export class OPFSMainThreadFS implements Blockstore {
   private readonly putManyConcurrency: number
   private readonly getManyConcurrency: number
   private readonly deleteManyConcurrency: number
@@ -141,8 +141,43 @@ export class OPFSMainThreadFS implements OPFSFileSystem {
 
   /**
    */
-  // eslint-disable-next-line require-yield
   async * getAll (): AsyncIterable<Pair> {
-    throw new Error('not supported')
+    try {
+      // @ts-expect-error: this.bsRoot.entries() is a thing
+      for await (const [name, handle] of this.bsRoot.entries()) {
+        if (handle.kind === 'file') {
+          let cid: CID
+          try {
+            cid = CID.parse(name)
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn(`Skipping invalid CID filename: ${name}`)
+            continue
+          }
+
+          try {
+            const fileHandle = await this.bsRoot.getFileHandle(name, { create: false })
+            const file = await fileHandle.getFile()
+            const buffer = await file.arrayBuffer()
+            const block = new Uint8Array(buffer)
+
+            yield { cid, block }
+          } catch (err) {
+            throw new GetFailedError(String(err))
+          }
+        }
+      }
+    } catch (err) {
+      throw new GetFailedError(String(err))
+    }
+  }
+
+  async deleteAll (): Promise<void> {
+    if ('remove' in FileSystemFileHandle.prototype) {
+      // @ts-expect-error: remove() is a thing in Chrome
+      await this.bsRoot.remove({ recursive: true })
+    } else {
+      await this.opfsRoot.removeEntry(this.path, { recursive: true })
+    }
   }
 }

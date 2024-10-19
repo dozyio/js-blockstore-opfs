@@ -35,9 +35,12 @@ self.addEventListener('message', async (event) => {
         result = exists
         break
       }
+      case 'getAll':
+        throw new Error('getAll not implemented')
       default:
         throw new Error(`Unknown method: ${method}`)
     }
+
     self.postMessage({ id, result }, [result].filter((x) => x instanceof ArrayBuffer))
   } catch (error) {
     self.postMessage({ id, error: error.message })

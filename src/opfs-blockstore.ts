@@ -9,18 +9,6 @@ import { type AwaitIterable } from 'interface-store'
 import type { Blockstore, Pair } from 'interface-blockstore'
 import type { CID } from 'multiformats/cid'
 
-export interface OPFSFileSystem {
-  open(): Promise<void>
-  close(): Promise<void>
-  put(key: CID, val: Uint8Array): Promise<CID>
-  putMany(source: AwaitIterable<Pair>): AsyncIterable<CID>
-  get(key: CID): Promise<Uint8Array>
-  getMany(source: AwaitIterable<CID>): AsyncIterable<Pair>
-  delete(key: CID): Promise<void>
-  deleteMany (source: AwaitIterable<CID>): AsyncIterable<CID>
-  has(key: CID): Promise<boolean>
-}
-
 export interface OPFSBlockstoreInit {
   /**
    * How many blocks to put in parallel when `.putMany` is called.
@@ -41,10 +29,16 @@ export interface OPFSBlockstoreInit {
   deleteManyConcurrency?: number
 }
 
-export class OPFSBlockstore implements Blockstore {
-  private readonly fs: OPFSFileSystem
+interface OpenCloseDeleteAllBlockstore extends Blockstore {
+  open(): Promise<void>
+  close(): Promise<void>
+  deleteAll(): Promise<void>
+}
 
-  constructor (fs: OPFSFileSystem) {
+export class OPFSBlockstore implements Blockstore {
+  private readonly fs: OpenCloseDeleteAllBlockstore
+
+  constructor (fs: OpenCloseDeleteAllBlockstore) {
     this.fs = fs
   }
 
@@ -67,6 +61,10 @@ export class OPFSBlockstore implements Blockstore {
     return this.fs.put(key, val)
   }
 
+  /**
+   * @throws PutFailedError
+   * @throws QuotaExceededError
+   */
   async * putMany (source: AwaitIterable<Pair>): AsyncIterable<CID> {
     yield * this.fs.putMany(source)
   }
@@ -92,6 +90,9 @@ export class OPFSBlockstore implements Blockstore {
     await this.fs.delete(key)
   }
 
+  /**
+   * @throws DeleteFailedError
+   */
   async * deleteMany (source: AwaitIterable<CID>): AsyncIterable<CID> {
     yield * this.fs.deleteMany(source)
   }
@@ -108,9 +109,12 @@ export class OPFSBlockstore implements Blockstore {
 
   /**
    */
-  // eslint-disable-next-line require-yield
   async * getAll (): AsyncIterable<Pair> {
-    throw new Error('not supported')
+    yield * this.fs.getAll()
+  }
+
+  async deleteAll (): Promise<void> {
+    await this.fs.deleteAll()
   }
 
   async free (): Promise<StorageEstimate> {
