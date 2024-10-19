@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('OPFSBlockstore Main Thread', () => {
-  const pageMainThread = 'http://localhost:3000/test-mainthread.html'
+  const pageMainThread = 'http://localhost:3000/test/mainthread.html'
 
   test.beforeEach(async ({ page }) => {
     // page.on('console', msg => { console.log(msg.text()) })

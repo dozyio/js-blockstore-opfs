@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('OPFSBlockstore WebWorker', () => {
-  const pageWebWorker = 'http://localhost:3000/test-webworker.html'
+  const pageWebWorker = 'http://localhost:3000/test/webworker.html'
 
   test.beforeEach(async ({ page }) => {
     // page.on('console', msg => { console.log(msg.text()) })

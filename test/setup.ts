@@ -1,8 +1,8 @@
 import { CID } from 'multiformats/cid'
 import { sha256 } from 'multiformats/hashes/sha2'
-import { OPFSMainThreadFS } from './main-thread-fs'
-import { OPFSWebWorkerFS } from './web-worker-fs'
-import { OPFSBlockstore } from './index'
+import { OPFSBlockstore } from '../src/index'
+import { OPFSMainThreadFS } from '../src/main-thread-fs'
+import { OPFSWebWorkerFS } from '../src/web-worker-fs'
 
 (window as any).OPFSMainThreadFS = OPFSMainThreadFS;
 (window as any).OPFSWebWorkerFS = OPFSWebWorkerFS;

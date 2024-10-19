@@ -4,12 +4,11 @@
   <title>OPFSBlockstore Web Worker Test</title>
 </head>
 <body>
-  <script type="module" src="/src/setup.ts"></script>
+  <script type="module" src="/test/setup.ts"></script>
   <script>
     // Initialize the web worker
-    window.worker = new Worker("opfs-worker.js", { type: "module" });
+    window.worker = new Worker("../opfs-worker.js", { type: "module" });
 
-    // Communication mechanism
     const pendingRequests = new Map();
     let requestId = 0;
 
