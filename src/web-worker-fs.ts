@@ -7,9 +7,9 @@ import { CID } from 'multiformats/cid'
 import type { OPFSBlockstoreInit } from '.'
 
 export class OPFSWebWorkerFS implements Blockstore {
-  private readonly putManyConcurrency: number
-  private readonly getManyConcurrency: number
-  private readonly deleteManyConcurrency: number
+  private putManyConcurrency: number
+  private getManyConcurrency: number
+  private deleteManyConcurrency: number
   private readonly path: string
   private opfsRoot!: FileSystemDirectoryHandle
   private bsRoot!: FileSystemDirectoryHandle
@@ -34,7 +34,7 @@ export class OPFSWebWorkerFS implements Blockstore {
     }
   }
 
-  async close (): Promise<void> {
+  close (): void {
     // noop
   }
 
@@ -192,5 +192,17 @@ export class OPFSWebWorkerFS implements Blockstore {
     } else {
       await this.opfsRoot.removeEntry(this.path, { recursive: true })
     }
+  }
+
+  setPutManyConcurrency (concurrency: number): void {
+    this.putManyConcurrency = concurrency
+  }
+
+  setGetManyConcurrency (concurrency: number): void {
+    this.getManyConcurrency = concurrency
+  }
+
+  setDeleteManyConcurrency (concurrency: number): void {
+    this.deleteManyConcurrency = concurrency
   }
 }

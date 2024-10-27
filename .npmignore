@@ -7,3 +7,5 @@ dist/test
 .prettierignore
 dist/setup.js
 dist/index-webworker-WIP.js
+playwright.config.ts
+tsconfig.tsbuildinfo

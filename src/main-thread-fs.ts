@@ -34,11 +34,13 @@ export class OPFSMainThreadFS implements Blockstore {
     }
   }
 
-  async close (): Promise<void> {
+  close (): void {
     // noop
   }
 
   /**
+   * createWritable unsupported in webkit - https://bugs.webkit.org/show_bug.cgi?id=231706
+   *
    * @throws PutFailedError
    * @throws QuotaExceededError
    */
@@ -58,6 +60,10 @@ export class OPFSMainThreadFS implements Blockstore {
     return key
   }
 
+  /**
+   * @throws PutFailedError
+   * @throws QuotaExceededError
+   */
   async * putMany (source: AwaitIterable<Pair>): AsyncIterable<CID> {
     yield * parallelBatch(
       map(source, ({ cid, block }) => {

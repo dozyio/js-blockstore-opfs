@@ -6,6 +6,7 @@
  */
 
 import { type AwaitIterable } from 'interface-store'
+import { OPFSMainThreadFS } from './main-thread-fs'
 import type { Blockstore, Pair } from 'interface-blockstore'
 import type { CID } from 'multiformats/cid'
 
@@ -31,89 +32,150 @@ export interface OPFSBlockstoreInit {
 
 interface OpenCloseDeleteAllBlockstore extends Blockstore {
   open(): Promise<void>
-  close(): Promise<void>
+  close(): void
   deleteAll(): Promise<void>
 }
 
 export class OPFSBlockstore implements Blockstore {
-  private readonly fs: OpenCloseDeleteAllBlockstore
+  private readonly path: string
+  private readonly mainThreadFS: OpenCloseDeleteAllBlockstore
+  private readonly worker!: Worker
+  private requestId = 0
+  private readonly workerPendingRequests = new Map<number, { resolve(value: any): void, reject(reason?: any): void }>()
 
-  constructor (fs: OpenCloseDeleteAllBlockstore) {
-    this.fs = fs
+  constructor (path: string, opts?: OPFSBlockstoreInit) {
+    this.path = path
+
+    this.mainThreadFS = new OPFSMainThreadFS(path, opts)
+
+    this.worker = new Worker(new URL('/dist/workers/opfs.worker.js', import.meta.url), {
+      type: 'module'
+    })
+
+    this.worker.onmessage = (event) => {
+      const { id, result, error, errorName, errorMessage, errorStack } = event.data
+      const request = this.workerPendingRequests.get(id)
+      if (request === undefined) {
+        throw new Error(`Unknown request ID: ${id}`)
+      }
+
+      this.workerPendingRequests.delete(id)
+
+      if (error === undefined) {
+        request.resolve(result)
+      }
+
+      request.reject({ name: errorName, message: errorMessage, stack: errorStack })
+    }
+  }
+
+  private async callWorker (method: string, params: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const id = this.requestId++
+      this.workerPendingRequests.set(id, { resolve, reject })
+      this.worker.postMessage({ id, method, params }, [params].filter((x) => x instanceof ArrayBuffer))
+    })
   }
 
   /**
+   * Opens the blockstore.
+   *
    * @throws OpenFailedError
    */
   async open (): Promise<void> {
-    await this.fs.open()
-  }
-
-  async close (): Promise<void> {
-    await this.fs.close()
+    await this.mainThreadFS.open()
+    await this.callWorker('open', { path: this.path })
   }
 
   /**
+   * Closes the blockstore.
+   */
+  close (): void {
+    this.mainThreadFS.close()
+    this.worker.terminate()
+  }
+
+  /**
+   * Puts a block by its CID.
+   *
    * @throws PutFailedError
    * @throws QuotaExceededError
    */
   async put (key: CID, val: Uint8Array): Promise<CID> {
-    return this.fs.put(key, val)
+    return this.callWorker('put', { key: key.toString(), value: val })
   }
 
   /**
+   * Puts multiple blocks.
+   *
    * @throws PutFailedError
    * @throws QuotaExceededError
    */
   async * putMany (source: AwaitIterable<Pair>): AsyncIterable<CID> {
-    yield * this.fs.putMany(source)
+    yield * this.mainThreadFS.putMany(source)
   }
 
   /**
+   * Gets a block by its CID.
+   *
    * @throws NotFoundError
    */
   async get (key: CID): Promise<Uint8Array> {
-    return this.fs.get(key)
+    return this.callWorker('get', { key: key.toString() })
+    // return this.mainThreadFS.get(key)
   }
 
+  /**
+   * Gets multiple blocks.
+   *
+   * @throws NotFoundError
+   */
   async * getMany (source: AwaitIterable<CID>): AsyncIterable<Pair> {
-    yield * this.fs.getMany(source)
+    yield * this.mainThreadFS.getMany(source)
   }
 
   /**
    * Deletes a block by its CID.
    *
-   * @param key - CID.
    * @throws DeleteFailedError
    */
   async delete (key: CID): Promise<void> {
-    await this.fs.delete(key)
+    return this.callWorker('delete', { key: key.toString() })
+    // await this.fs.delete(key)
   }
 
   /**
+   * Deletes multiple blocks.
+   *
    * @throws DeleteFailedError
    */
   async * deleteMany (source: AwaitIterable<CID>): AsyncIterable<CID> {
-    yield * this.fs.deleteMany(source)
+    yield * this.mainThreadFS.deleteMany(source)
   }
 
   /**
    * Checks if a block exists by its original CID.
    *
-   * @param key - The original CID.
    * @returns A boolean indicating existence.
    */
   async has (key: CID): Promise<boolean> {
-    return this.fs.has(key)
+    // return this.mainThreadFS.has(key)
+    return this.callWorker('has', { key: key.toString() })
+    // return this.fs.has(key)
   }
 
   /**
+   * Gets all blocks.
    */
   async * getAll (): AsyncIterable<Pair> {
-    yield * this.fs.getAll()
+    yield * this.mainThreadFS.getAll()
   }
 
+  /**
+   * Deletes all blocks.
+   */
   async deleteAll (): Promise<void> {
-    await this.fs.deleteAll()
+    return this.callWorker('deleteAll', { path: this.path })
+    // await this.mainThreadFS.deleteAll()
   }
 }

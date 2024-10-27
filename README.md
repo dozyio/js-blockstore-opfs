@@ -3,7 +3,7 @@
 Origin Private File System TS/JS blockstore implementation for
 [IPFS](https://ipfs.io) / [Helia](https://github.com/ipfs/helia).
 
-## Notes
+## Caveats
 
 - OPFS is only supported in the browser.
 
@@ -13,15 +13,11 @@ Origin Private File System TS/JS blockstore implementation for
 navigator.storage.estimate()
 ```
 
-## WIP
-
-- Web workers
-
 ## Todo
 
 - Benchmarks
 - Sharding
-- getAll()
+- Async iterable operations across threads with transferable objects
 
 ## OPFS Links
 
