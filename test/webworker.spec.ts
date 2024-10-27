@@ -166,32 +166,6 @@ test.describe('OPFSBlockstore WebWorker', () => {
     expect(result).toContain('NotFoundError')
   })
 
-  test('should return storage estimate with quota and usage', async ({ page }) => {
-    const estimate = await page.evaluate(async () => {
-      const { OPFSBlockstore } = (window as any)
-      const { OPFSMainThreadFS } = (window as any)
-
-      const mainThreadFS = new OPFSMainThreadFS('bs')
-      const store = new OPFSBlockstore(mainThreadFS)
-      await store.open()
-
-      // Call the free() method
-      return store.free()
-    })
-
-    // Verify that estimate is an object
-    expect(typeof estimate).toBe('object')
-    expect(estimate).not.toBeNull()
-
-    // Verify that estimate has 'quota' and 'usage' properties
-    expect(estimate).toHaveProperty('quota')
-    expect(estimate).toHaveProperty('usage')
-
-    // Verify that 'quota' and 'usage' are numbers
-    expect(typeof estimate.quota).toBe('number')
-    expect(typeof estimate.usage).toBe('number')
-  })
-
   test.skip('should put and get multiple blocks using putMany and getMany', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
@@ -263,12 +237,142 @@ test.describe('OPFSBlockstore WebWorker', () => {
     }
   })
 
-  // test.skip('should delete multiple blocks using deleteMany', async ({ page }) => {
-  //   // @TODO
-  // })
-  //
-  // // skipped to stop thrashing storage
-  // test.skip('should handle writing more data than the storage quota allows', async ({ page }) => {
-  //   // @TODO
-  // })
+  test.skip('should delete multiple blocks using deleteMany', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { OPFSBlockstore } = (window as any)
+      const { OPFSMainThreadFS } = (window as any)
+      const { CID } = (window as any)
+      const { sha256 } = (window as any)
+
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
+
+      // Prepare multiple blocks
+      const dataBlocks = [
+        new Uint8Array([12, 13, 14, 15]),
+        new Uint8Array([16, 17, 18, 19]),
+        new Uint8Array([20, 21, 22, 23])
+      ]
+
+      // Create CIDs and Pairs
+      const pairs = await Promise.all(
+        dataBlocks.map(async (data) => {
+          const hash = await sha256.digest(data)
+          const cid = CID.createV1(0x55, hash)
+          return { cid, block: data }
+        })
+      )
+
+      // Put many blocks
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for await (const _ of store.putMany(pairs)) {
+        // Blocks stored
+      }
+
+      // Delete many blocks
+      const cids = pairs.map((pair) => pair.cid)
+      const deleteResults = []
+      for await (const cid of store.deleteMany(cids)) {
+        deleteResults.push(cid.toString())
+      }
+
+      // Check if blocks still exist
+      const hasResults = await Promise.all(
+        cids.map((cid) => store.has(cid))
+      )
+
+      return {
+        deleteResults,
+        hasResults
+      }
+    })
+
+    // Verify that all CIDs were returned by deleteMany
+    expect(result.deleteResults.length).toBe(3)
+    expect(result.deleteResults).toEqual(
+      expect.arrayContaining([
+        expect.any(String),
+        expect.any(String),
+        expect.any(String)
+      ])
+    )
+
+    // Verify that all blocks have been deleted
+    for (const has of result.hasResults) {
+      expect(has).toBe(false)
+    }
+  })
+
+  test.skip('should retrieve all blocks using getAll', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { OPFSBlockstore } = window as any
+      const { OPFSMainThreadFS } = window as any
+      const { CID } = window as any
+      const { sha256 } = window as any
+
+      const mainThreadFS = new OPFSMainThreadFS('bs')
+      const store = new OPFSBlockstore(mainThreadFS)
+      await store.open()
+
+      // Prepare multiple blocks
+      const dataBlocks = [
+        new Uint8Array([24, 25, 26, 27]),
+        new Uint8Array([28, 29, 30, 31]),
+        new Uint8Array([32, 33, 34, 35])
+      ]
+
+      // Create CIDs and Pairs
+      const pairs = await Promise.all(
+        dataBlocks.map(async (data) => {
+          const hash = await sha256.digest(data)
+          const cid = CID.createV1(0x55, hash) // 0x55 is the multicodec code for 'raw'
+          return { cid, block: data }
+        })
+      )
+
+      // Put many blocks
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for await (const _ of store.putMany(pairs)) {
+        // Blocks stored
+      }
+
+      // Use getAll to retrieve all blocks
+      const getAllResults = []
+      for await (const { cid, block } of store.getAll()) {
+        getAllResults.push({
+          cid: cid.toString(),
+          block: Array.from(block)
+        })
+      }
+
+      // Return the stored CIDs and data blocks for verification
+      const storedCids = pairs.map((pair) => pair.cid.toString())
+      const storedBlocks = pairs.map((pair) => Array.from(pair.block))
+
+      return {
+        getAllResults,
+        storedCids,
+        storedBlocks
+      }
+    })
+
+    // Verify that getAllResults match the original data
+    expect(result.getAllResults.length).toBe(result.storedCids.length)
+
+    // Create a map from CID to block in getAllResults
+    const getAllCidToBlock = new Map()
+    for (const item of result.getAllResults) {
+      getAllCidToBlock.set(item.cid, item.block)
+    }
+
+    // Verify that each stored CID and block is in getAllResults
+    for (let i = 0; i < result.storedCids.length; i++) {
+      const cid = result.storedCids[i]
+      const block = result.storedBlocks[i]
+
+      expect(getAllCidToBlock.has(cid)).toBe(true)
+      expect(getAllCidToBlock.get(cid)).toEqual(block)
+    }
+  })
 })

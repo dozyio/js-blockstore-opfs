@@ -116,8 +116,4 @@ export class OPFSBlockstore implements Blockstore {
   async deleteAll (): Promise<void> {
     await this.fs.deleteAll()
   }
-
-  async free (): Promise<StorageEstimate> {
-    return navigator.storage.estimate()
-  }
 }

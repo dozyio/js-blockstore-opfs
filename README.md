@@ -7,6 +7,12 @@ Origin Private File System TS/JS blockstore implementation for
 
 - OPFS is only supported in the browser.
 
+## View storage quota
+
+```js
+navigator.storage.estimate()
+```
+
 ## WIP
 
 - Web workers

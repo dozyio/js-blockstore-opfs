@@ -144,32 +144,6 @@ test.describe('OPFSBlockstore Main Thread', () => {
     expect(result).toContain('NotFoundError')
   })
 
-  test('should return storage estimate with quota and usage', async ({ page }) => {
-    const estimate = await page.evaluate(async () => {
-      const { OPFSBlockstore } = (window as any)
-      const { OPFSMainThreadFS } = (window as any)
-
-      const mainThreadFS = new OPFSMainThreadFS('bs')
-      const store = new OPFSBlockstore(mainThreadFS)
-      await store.open()
-
-      // Call the free() method
-      return store.free()
-    })
-
-    // Verify that estimate is an object
-    expect(typeof estimate).toBe('object')
-    expect(estimate).not.toBeNull()
-
-    // Verify that estimate has 'quota' and 'usage' properties
-    expect(estimate).toHaveProperty('quota')
-    expect(estimate).toHaveProperty('usage')
-
-    // Verify that 'quota' and 'usage' are numbers
-    expect(typeof estimate.quota).toBe('number')
-    expect(typeof estimate.usage).toBe('number')
-  })
-
   test('should put and get multiple blocks using putMany and getMany', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const { OPFSBlockstore } = (window as any)
