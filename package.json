@@ -34,19 +34,19 @@
   },
   "scripts": {
     "dev": "vite",
-    "test": "npm run build && npm run test:aegir && npm run test:pw",
-    "test:pw": "npm run build && playwright test test/mainthread.spec.ts",
-    "test:aegir": "npm run test:aegir:chromium && npm run test:aegir:firefox",
+    "test": "npm run test:aegir && npm run test:pw",
+    "test:pw": "npm run build && playwright test test/blockstore.spec.ts",
+    "test:aegir": "npm run test:aegir:chromium && npm run test:aegir:firefox && npm run test:aegir:webkit",
     "test:aegir:firefox": "aegir test -- --browser firefox",
     "test:aegir:chromium": "aegir test -- --browser chromium",
+    "test:aegir:webkit": "aegir test -- --browser webkit",
     "build": "rm -rf dist && tsc && vite build --config vite.worker.config.js && vite build",
     "lint": "aegir lint --fix"
   },
   "dependencies": {
     "it-map": "^3.1.1",
     "it-parallel-batch": "^3.0.6",
-    "multiformats": "^13.3.0",
-    "simple-worker-vite": "^0.3.0"
+    "multiformats": "^13.3.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
@@ -57,6 +57,7 @@
     "interface-blockstore-tests": "^7.0.1",
     "interface-store": "^6.0.2",
     "playwright": "^1.48.0",
+    "simple-worker-vite": "^0.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",
     "vite": "^5.4.9",

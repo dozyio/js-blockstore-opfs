@@ -6,6 +6,8 @@
  */
 
 import { type AwaitIterable } from 'interface-store'
+import map from 'it-map'
+import parallelBatch from 'it-parallel-batch'
 import { OPFSMainThreadFS } from './main-thread-fs'
 import type { Blockstore, Pair } from 'interface-blockstore'
 import type { CID } from 'multiformats/cid'
@@ -40,11 +42,17 @@ export class OPFSBlockstore implements Blockstore {
   private readonly path: string
   private readonly mainThreadFS: OpenCloseDeleteAllBlockstore
   private readonly worker!: Worker
+  private readonly _putManyConcurrency: number
+  private readonly _getManyConcurrency: number
+  private readonly _deleteManyConcurrency: number
   private requestId = 0
   private readonly workerPendingRequests = new Map<number, { resolve(value: any): void, reject(reason?: any): void }>()
 
   constructor (path: string, opts?: OPFSBlockstoreInit) {
     this.path = path
+    this._putManyConcurrency = opts?.putManyConcurrency ?? 50
+    this._getManyConcurrency = opts?.getManyConcurrency ?? 50
+    this._deleteManyConcurrency = opts?.deleteManyConcurrency ?? 50
 
     this.mainThreadFS = new OPFSMainThreadFS(path, opts)
 
@@ -84,7 +92,12 @@ export class OPFSBlockstore implements Blockstore {
    */
   async open (): Promise<void> {
     await this.mainThreadFS.open()
-    await this.callWorker('open', { path: this.path })
+    await this.callWorker('open', {
+      path: this.path,
+      getManyConcurrency: this._getManyConcurrency,
+      putManyConcurrency: this._putManyConcurrency,
+      deleteManyConcurrency: this._deleteManyConcurrency
+    })
   }
 
   /**
@@ -112,7 +125,16 @@ export class OPFSBlockstore implements Blockstore {
    * @throws QuotaExceededError
    */
   async * putMany (source: AwaitIterable<Pair>): AsyncIterable<CID> {
-    yield * this.mainThreadFS.putMany(source)
+    yield * parallelBatch(
+      map(source, ({ cid, block }) => {
+        return async () => {
+          await this.put(cid, block)
+
+          return cid
+        }
+      }),
+      this._putManyConcurrency
+    )
   }
 
   /**
@@ -122,7 +144,6 @@ export class OPFSBlockstore implements Blockstore {
    */
   async get (key: CID): Promise<Uint8Array> {
     return this.callWorker('get', { key: key.toString() })
-    // return this.mainThreadFS.get(key)
   }
 
   /**
@@ -131,7 +152,17 @@ export class OPFSBlockstore implements Blockstore {
    * @throws NotFoundError
    */
   async * getMany (source: AwaitIterable<CID>): AsyncIterable<Pair> {
-    yield * this.mainThreadFS.getMany(source)
+    yield * parallelBatch(
+      map(source, key => {
+        return async () => {
+          return {
+            cid: key,
+            block: await this.get(key)
+          }
+        }
+      }),
+      this.getManyConcurrency
+    )
   }
 
   /**
@@ -141,7 +172,6 @@ export class OPFSBlockstore implements Blockstore {
    */
   async delete (key: CID): Promise<void> {
     return this.callWorker('delete', { key: key.toString() })
-    // await this.fs.delete(key)
   }
 
   /**
@@ -150,7 +180,16 @@ export class OPFSBlockstore implements Blockstore {
    * @throws DeleteFailedError
    */
   async * deleteMany (source: AwaitIterable<CID>): AsyncIterable<CID> {
-    yield * this.mainThreadFS.deleteMany(source)
+    yield * parallelBatch(
+      map(source, key => {
+        return async () => {
+          await this.delete(key)
+
+          return key
+        }
+      }),
+      this.deleteManyConcurrency
+    )
   }
 
   /**
@@ -159,9 +198,7 @@ export class OPFSBlockstore implements Blockstore {
    * @returns A boolean indicating existence.
    */
   async has (key: CID): Promise<boolean> {
-    // return this.mainThreadFS.has(key)
     return this.callWorker('has', { key: key.toString() })
-    // return this.fs.has(key)
   }
 
   /**
@@ -176,6 +213,13 @@ export class OPFSBlockstore implements Blockstore {
    */
   async deleteAll (): Promise<void> {
     return this.callWorker('deleteAll', { path: this.path })
-    // await this.mainThreadFS.deleteAll()
+  }
+
+  public get deleteManyConcurrency (): number {
+    return this._deleteManyConcurrency
+  }
+
+  public get getManyConcurrency (): number {
+    return this._getManyConcurrency
   }
 }

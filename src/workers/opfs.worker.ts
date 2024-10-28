@@ -20,11 +20,11 @@ self.addEventListener('message', (event) => {
 })
 
 async function handleMessage (event: MessageEvent): Promise<void> {
-  const { id, method, params, getManyConcurrency, putManyConcurrency, deleteManyConcurrency } = event.data
+  const { id, method, params } = event.data
 
   switch (method) {
     case 'open': {
-      await handleOpen(id, params, getManyConcurrency, putManyConcurrency, deleteManyConcurrency)
+      await handleOpen(id, params)
       break
     }
 
@@ -106,18 +106,22 @@ async function handleMessage (event: MessageEvent): Promise<void> {
   }
 }
 
-async function handleOpen (id: any, params: any, getManyConcurrency?: number, putManyConcurrency?: number, deleteManyConcurrency?: number): Promise<void> {
-  const { path } = params
+async function handleOpen (id: any, params: any): Promise<void> {
+  const { path, getManyConcurrency, putManyConcurrency, deleteManyConcurrency } = params
   store = new OPFSWebWorkerFS(path)
   await store.open()
+
   if (getManyConcurrency !== undefined) {
     store.setGetManyConcurrency(getManyConcurrency)
   }
+
   if (putManyConcurrency !== undefined) {
     store.setPutManyConcurrency(putManyConcurrency)
   }
+
   if (deleteManyConcurrency !== undefined) {
     store.setDeleteManyConcurrency(deleteManyConcurrency)
   }
+
   self.postMessage({ id, result: null })
 }

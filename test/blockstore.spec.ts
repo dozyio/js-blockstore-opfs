@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('OPFSBlockstore', () => {
-  const pageMainThread = 'http://localhost:3000/test/mainthread.html'
+  const pageMainThread = 'http://localhost:3000/test/blockstore.html'
 
   test.beforeEach(async ({ page }) => {
     // eslint-disable-next-line no-console
-    page.on('console', msg => { console.log(msg.text()) })
+    // page.on('console', msg => { console.log(msg.text()) })
 
     await page.goto(pageMainThread)
   })
