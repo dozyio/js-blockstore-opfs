@@ -166,6 +166,13 @@ export class OPFSBlockstore implements Blockstore {
   }
 
   /**
+   * Gets all blocks.
+   */
+  async * getAll (): AsyncIterable<Pair> {
+    yield * this.mainThreadFS.getAll()
+  }
+
+  /**
    * Deletes a block by its CID.
    *
    * @throws DeleteFailedError
@@ -193,26 +200,19 @@ export class OPFSBlockstore implements Blockstore {
   }
 
   /**
+   * Deletes all blocks.
+   */
+  async deleteAll (): Promise<void> {
+    return this.callWorker('deleteAll', { path: this.path })
+  }
+
+  /**
    * Checks if a block exists by its original CID.
    *
    * @returns A boolean indicating existence.
    */
   async has (key: CID): Promise<boolean> {
     return this.callWorker('has', { key: key.toString() })
-  }
-
-  /**
-   * Gets all blocks.
-   */
-  async * getAll (): AsyncIterable<Pair> {
-    yield * this.mainThreadFS.getAll()
-  }
-
-  /**
-   * Deletes all blocks.
-   */
-  async deleteAll (): Promise<void> {
-    return this.callWorker('deleteAll', { path: this.path })
   }
 
   public get deleteManyConcurrency (): number {

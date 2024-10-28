@@ -51,7 +51,7 @@ export class OPFSWebWorkerFS implements Blockstore {
       const n = accessHandle.write(val, { at: 0 })
       if (n !== val.byteLength) {
         accessHandle.close()
-        throw new Error(`write length ${n} !== ${val.byteLength}`)
+        throw new PutFailedError(`write length ${n} !== ${val.byteLength}`)
       }
 
       accessHandle.close()
