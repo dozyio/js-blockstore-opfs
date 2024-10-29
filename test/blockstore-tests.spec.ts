@@ -5,7 +5,7 @@ import { OPFSMainThreadFS, OPFSWebWorkerFS, OPFSBlockstore } from '../src/index'
 
 const pwOpts = (process.env.PW_OPTIONS != null) ? JSON.parse(process.env.PW_OPTIONS) : {}
 
-// Test the blockstore wrapper
+// Test the blockstore using interface-blockstore-tests
 describe('interface-blockstore (OPFS Blockstore)', () => {
   it('OPFS blockstore', async () => {
     try {
@@ -25,12 +25,12 @@ describe('interface-blockstore (OPFS Blockstore)', () => {
       expect(err).to.not.exist()
     }
   })
-})
+});
 
 // Test the underlying main thread implementation
-describe('interface-blockstore (OPFS main thread implementation)', () => {
-  // webkit doesn't support createWritable so skip this test
-  (process.env.AEGIR_RUNNER === 'browser' && pwOpts.browser !== 'webkit' ? it : it.skip)('OPFS main thread', async () => {
+// webkit doesn't support createWritable so skip this test on that browser
+(process.env.AEGIR_RUNNER === 'browser' && pwOpts.browser !== 'webkit' ? describe : describe.skip)('interface-blockstore (OPFS Main Thread FS)', () => {
+  it('OPFS main thread', async () => {
     try {
       interfaceBlockstoreTests({
         async setup () {
@@ -48,11 +48,11 @@ describe('interface-blockstore (OPFS main thread implementation)', () => {
       expect(err).to.not.exist()
     }
   })
-})
+});
 
 // Test the underlying web worker implementation
-describe('interface-blockstore (OPFS web worker implementation)', () => {
-  (process.env.AEGIR_RUNNER === 'webworker' ? it : it.skip)('OPFS web worker', async () => {
+(process.env.AEGIR_RUNNER === 'webworker' ? describe : describe.skip)('interface-blockstore (OPFS Web Worker FS)', () => {
+  it('OPFS web worker', async () => {
     try {
       interfaceBlockstoreTests({
         async setup () {

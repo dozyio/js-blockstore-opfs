@@ -89,6 +89,17 @@ async function handleMessage (event: MessageEvent): Promise<void> {
       break
     }
 
+    // list files
+    case 'ls': {
+      if (store === undefined) {
+        throw new Error('store is not open')
+      }
+
+      const result = await store.ls()
+      self.postMessage({ id, result })
+      break
+    }
+
     case 'getMany':
       throw new Error('getMany not implemented')
 

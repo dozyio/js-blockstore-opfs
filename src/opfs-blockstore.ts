@@ -2,15 +2,15 @@
 /**
  * @packageDocumentation
  *
- * OPFSBlockstore is Origin Private File System blockstore for use in browsers.
+ * OPFSBlockstore is Origin Private File System blockstore for use in browsers,
+ * that uses a web worker to do all the operations.
  */
 
 import { type AwaitIterable } from 'interface-store'
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
-import { OPFSMainThreadFS } from './main-thread-fs'
+import { CID } from 'multiformats/cid'
 import type { Blockstore, Pair } from 'interface-blockstore'
-import type { CID } from 'multiformats/cid'
 
 export interface OPFSBlockstoreInit {
   /**
@@ -32,15 +32,8 @@ export interface OPFSBlockstoreInit {
   deleteManyConcurrency?: number
 }
 
-interface OpenCloseDeleteAllBlockstore extends Blockstore {
-  open(): Promise<void>
-  close(): void
-  deleteAll(): Promise<void>
-}
-
 export class OPFSBlockstore implements Blockstore {
   private readonly path: string
-  private readonly mainThreadFS: OpenCloseDeleteAllBlockstore
   private readonly worker!: Worker
   private readonly _putManyConcurrency: number
   private readonly _getManyConcurrency: number
@@ -53,8 +46,6 @@ export class OPFSBlockstore implements Blockstore {
     this._putManyConcurrency = opts?.putManyConcurrency ?? 50
     this._getManyConcurrency = opts?.getManyConcurrency ?? 50
     this._deleteManyConcurrency = opts?.deleteManyConcurrency ?? 50
-
-    this.mainThreadFS = new OPFSMainThreadFS(path, opts)
 
     this.worker = new Worker(new URL('/dist/workers/opfs.worker.js', import.meta.url), {
       type: 'module'
@@ -91,7 +82,6 @@ export class OPFSBlockstore implements Blockstore {
    * @throws OpenFailedError
    */
   async open (): Promise<void> {
-    await this.mainThreadFS.open()
     await this.callWorker('open', {
       path: this.path,
       getManyConcurrency: this._getManyConcurrency,
@@ -104,7 +94,6 @@ export class OPFSBlockstore implements Blockstore {
    * Closes the blockstore.
    */
   close (): void {
-    this.mainThreadFS.close()
     this.worker.terminate()
   }
 
@@ -169,7 +158,20 @@ export class OPFSBlockstore implements Blockstore {
    * Gets all blocks.
    */
   async * getAll (): AsyncIterable<Pair> {
-    yield * this.mainThreadFS.getAll()
+    const keys: string[] = await this.callWorker('ls', {})
+
+    yield * parallelBatch(
+      map(keys, key => {
+        return async () => {
+          const cid = CID.parse(key)
+          return {
+            cid,
+            block: await this.get(cid)
+          }
+        }
+      }),
+      this.getManyConcurrency
+    )
   }
 
   /**
@@ -215,11 +217,15 @@ export class OPFSBlockstore implements Blockstore {
     return this.callWorker('has', { key: key.toString() })
   }
 
-  public get deleteManyConcurrency (): number {
-    return this._deleteManyConcurrency
+  public get putManyConcurrency (): number {
+    return this._putManyConcurrency
   }
 
   public get getManyConcurrency (): number {
     return this._getManyConcurrency
+  }
+
+  public get deleteManyConcurrency (): number {
+    return this._deleteManyConcurrency
   }
 }

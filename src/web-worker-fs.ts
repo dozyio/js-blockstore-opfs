@@ -194,6 +194,17 @@ export class OPFSWebWorkerFS implements Blockstore {
     }
   }
 
+  async ls (): Promise<string[]> {
+    const keys: string[] = []
+
+    // @ts-expect-error: this.bsRoot.entries() is a thing
+    for await (const [name] of this.bsRoot) {
+      keys.push(name)
+    }
+
+    return keys
+  }
+
   setPutManyConcurrency (concurrency: number): void {
     this.putManyConcurrency = concurrency
   }

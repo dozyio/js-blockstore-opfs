@@ -5,7 +5,7 @@ Origin Private File System TS/JS blockstore implementation for
 
 ## Caveats
 
-- OPFS is only supported in the browser.
+- OPFS is only supported in the browser (Chrome, Firefox and Safari).
 
 ## View storage quota
 
@@ -17,7 +17,6 @@ navigator.storage.estimate()
 
 - Benchmarks
 - Sharding
-- Async iterable operations across threads with transferable objects
 
 ## OPFS Links
 
@@ -25,3 +24,7 @@ navigator.storage.estimate()
 - [MDN](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system)
 - [The origin private file system](https://web.dev/articles/origin-private-file-system)
 - [OFPS Explorer brower plugin](https://chromewebstore.google.com/detail/opfs-explorer/acndjpgkpaclldomagafnognkcgjignd?pli=1)
+
+## License
+
+MIT License
