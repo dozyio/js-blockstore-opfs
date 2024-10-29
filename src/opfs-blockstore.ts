@@ -41,15 +41,20 @@ export class OPFSBlockstore implements Blockstore {
   private requestId = 0
   private readonly workerPendingRequests = new Map<number, { resolve(value: any): void, reject(reason?: any): void }>()
 
-  constructor (path: string, opts?: OPFSBlockstoreInit) {
+  constructor (path: string, workerPath: string, opts?: OPFSBlockstoreInit) {
     this.path = path
     this._putManyConcurrency = opts?.putManyConcurrency ?? 50
     this._getManyConcurrency = opts?.getManyConcurrency ?? 50
     this._deleteManyConcurrency = opts?.deleteManyConcurrency ?? 50
 
-    this.worker = new Worker(new URL('/dist/workers/opfs.worker.js', import.meta.url), {
-      type: 'module'
-    })
+    try {
+      // this.worker = new Worker(new URL('/dist/workers/opfs.worker.js', import.meta.url), {
+      this.worker = new Worker(new URL(workerPath, import.meta.url), {
+        type: 'module'
+      })
+    } catch (e: any) {
+      throw new Error('Failed to instantiate web worker', e)
+    }
 
     this.worker.onmessage = (event) => {
       const { id, result, error, errorName, errorMessage, errorStack } = event.data

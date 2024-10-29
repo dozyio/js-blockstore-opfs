@@ -1,5 +1,5 @@
 // src/main-thread-fs.ts
-// The opfs-blockstore use the web worker for all operations, so this this file is kept for reference
+// Deprecated in favour of the web worker which works with webkit
 import { type Blockstore, type Pair } from 'interface-blockstore'
 import { type AwaitIterable, DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
 import map from 'it-map'
