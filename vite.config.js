@@ -19,8 +19,8 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      formats: ['es']
+      entry: resolve(__dirname, 'src/workers/opfs.worker.ts'),
+      formats: ['es', 'cjs']
     },
     sourcemap: true,
     emptyOutDir: false

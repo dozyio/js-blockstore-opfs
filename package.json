@@ -1,7 +1,8 @@
 {
   "name": "blockstore-opfs",
   "version": "0.0.4-alpha.5",
-  "main": "dist/blockstore-opfs.js",
+  "main": "dist/blockstore-opfs.cjs",
+  "module": "./dist/blockstore-opfs.js",
   "type": "module",
   "keywords": [],
   "author": "dozyio",
@@ -21,8 +22,12 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/src/index.d.ts",
-      "import": "./dist/src/index.js"
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    },
+    "./worker": {
+      "import": "./dist/workers/opfs.worker.js",
+      "types": "./dist/src/workers/opfs.worker.d.ts"
     }
   },
   "eslintConfig": {
@@ -40,10 +45,12 @@
     "test:aegir:firefox": "aegir test -- --browser firefox",
     "test:aegir:chromium": "aegir test -- --browser chromium",
     "test:aegir:webkit": "aegir test -- --browser webkit",
-    "build": "rm -rf dist && tsc && vite build --config vite.worker.config.js",
+    "build": "rm -rf dist && tsc && vite build --config vite.config.js",
     "lint": "aegir lint --fix"
   },
   "dependencies": {
+    "interface-blockstore": "^5.3.1",
+    "interface-store": "^6.0.2",
     "it-map": "^3.1.1",
     "it-parallel-batch": "^3.0.6",
     "multiformats": "^13.3.0"
@@ -53,9 +60,7 @@
     "@types/mocha": "^10.0.9",
     "aegir": "^44.1.4",
     "globals": "^15.11.0",
-    "interface-blockstore": "^5.3.1",
     "interface-blockstore-tests": "^7.0.1",
-    "interface-store": "^6.0.2",
     "playwright": "^1.48.0",
     "simple-worker-vite": "^0.3.0",
     "ts-node": "^10.9.2",
