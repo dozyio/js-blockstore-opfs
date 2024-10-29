@@ -1,7 +1,7 @@
 {
   "name": "blockstore-opfs",
   "version": "0.0.4-alpha.2",
-  "main": "index.js",
+  "main": "dist/blockstore-opfs.js",
   "type": "module",
   "keywords": [],
   "author": "dozyio",
