@@ -53,7 +53,7 @@ export class OPFSBlockstore implements Blockstore {
         type: 'module'
       })
     } catch (e: any) {
-      throw new Error('Failed to instantiate web worker', e)
+      throw new Error(`Failed to instantiate web worker ${e}`)
     }
 
     this.worker.onmessage = (event) => {
