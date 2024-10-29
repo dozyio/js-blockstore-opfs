@@ -8,4 +8,3 @@ dist/test
 dist/setup.js
 playwright.config.ts
 tsconfig.tsbuildinfo
-dist/assets

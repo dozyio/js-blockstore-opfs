@@ -40,7 +40,7 @@
     "test:aegir:firefox": "aegir test -- --browser firefox",
     "test:aegir:chromium": "aegir test -- --browser chromium",
     "test:aegir:webkit": "aegir test -- --browser webkit",
-    "build": "rm -rf dist && tsc && vite build --config vite.worker.config.js && vite build",
+    "build": "rm -rf dist && tsc && vite build --config vite.worker.config.js",
     "lint": "aegir lint --fix"
   },
   "dependencies": {

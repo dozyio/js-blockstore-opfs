@@ -1,11 +1,36 @@
 # OPFS Blockstore
 
 Origin Private File System TS/JS blockstore implementation for
-[IPFS](https://ipfs.io) / [Helia](https://github.com/ipfs/helia).
+[IPFS](https://ipfs.io) / [Helia](https://github.com/ipfs/helia) - for use in
+the browser.
 
-## Caveats
+## Install
 
-- OPFS is only supported in the browser (Chrome, Firefox and Safari).
+```sh
+npm install blockstore-opfs
+```
+
+or
+
+```sh
+yarn add blockstore-opfs
+```
+
+## Usage
+
+```js
+import { BlockstoreOPFS } from 'blockstore-opfs'
+
+const blockstore = new BlockstoreOPFS('path/to/blockstore')
+
+await blockstore.open()
+
+await blockstore.put('hello', 'world')
+
+console.log(await blockstore.get('hello'))
+
+await blockstore.close()
+```
 
 ## View storage quota
 
