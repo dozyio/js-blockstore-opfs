@@ -24,10 +24,6 @@
     ".": {
       "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
-    },
-    "./worker": {
-      "import": "./dist/workers/opfs.worker.js",
-      "types": "./dist/src/workers/opfs.worker.d.ts"
     }
   },
   "eslintConfig": {
@@ -45,7 +41,8 @@
     "test:aegir:firefox": "aegir test -- --browser firefox",
     "test:aegir:chromium": "aegir test -- --browser chromium",
     "test:aegir:webkit": "aegir test -- --browser webkit",
-    "build": "rm -rf dist && tsc && vite build --config vite.config.js",
+    "build:worker": "rm -rf dist-worker && tsc && vite build --config vite.worker.config.js && sed '1s/^/export const workerScript = `/; 1!s/\\\\/\\\\\\\\/g; 1!s/`/\\\\`/g; 1!s/\\${/\\\\${/g; $s/$/`;/' dist-worker/opfs-worker.js > src/opfs-worker.js",
+    "build": "rm -rf dist && npm run build:worker && vite build --config vite.config.js",
     "lint": "aegir lint --fix"
   },
   "dependencies": {

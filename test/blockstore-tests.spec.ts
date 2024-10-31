@@ -11,7 +11,7 @@ describe('interface-blockstore (OPFS Blockstore)', () => {
     try {
       interfaceBlockstoreTests({
         async setup () {
-          const store = new OPFSBlockstore('bs', '/dist/workers/opfs.worker.js')
+          const store = new OPFSBlockstore('bs')
           await store.open()
           return store
         },

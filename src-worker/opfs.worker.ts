@@ -1,5 +1,5 @@
 // src/opfs-worker.ts
-import { OPFSWebWorkerFS } from '../web-worker-fs'
+import { OPFSWebWorkerFS } from '../src/web-worker-fs'
 
 let store: OPFSWebWorkerFS | undefined
 

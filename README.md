@@ -21,7 +21,7 @@ yarn add blockstore-opfs
 ```js
 import { BlockstoreOPFS } from 'blockstore-opfs'
 
-const blockstore = new BlockstoreOPFS('path/to/blockstore', 'blockstore-opfs/dist/workers/opfs.worker.js')
+const blockstore = new BlockstoreOPFS('path/to/blockstore') // without leading slash
 
 await blockstore.open()
 

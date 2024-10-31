@@ -10,6 +10,7 @@ import { type AwaitIterable } from 'interface-store'
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
 import { CID } from 'multiformats/cid'
+import { workerScript } from './opfs-worker'
 import type { Blockstore, Pair } from 'interface-blockstore'
 
 export interface OPFSBlockstoreInit {
@@ -41,17 +42,16 @@ export class OPFSBlockstore implements Blockstore {
   private requestId = 0
   private readonly workerPendingRequests = new Map<number, { resolve(value: any): void, reject(reason?: any): void }>()
 
-  constructor (path: string, workerPath: string, opts?: OPFSBlockstoreInit) {
+  constructor (path: string, opts?: OPFSBlockstoreInit) {
     this.path = path
     this._putManyConcurrency = opts?.putManyConcurrency ?? 50
     this._getManyConcurrency = opts?.getManyConcurrency ?? 50
     this._deleteManyConcurrency = opts?.deleteManyConcurrency ?? 50
 
     try {
-      // this.worker = new Worker(new URL('/dist/workers/opfs.worker.js', import.meta.url), {
-      this.worker = new Worker(new URL(workerPath, import.meta.url), {
-        type: 'module'
-      })
+      const blob = new Blob([workerScript], { type: 'text/javascript' })
+      const blobUrl = globalThis.URL.createObjectURL(blob)
+      this.worker = new Worker(blobUrl)
     } catch (e: any) {
       throw new Error(`Failed to instantiate web worker ${e}`)
     }
