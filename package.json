@@ -1,7 +1,6 @@
 {
   "name": "blockstore-opfs",
   "version": "0.0.4-alpha.7",
-  "main": "dist/blockstore-opfs.cjs",
   "module": "./dist/blockstore-opfs.js",
   "type": "module",
   "keywords": [],
@@ -22,7 +21,7 @@
   ],
   "exports": {
     ".": {
-      "import": "./dist/src/index.js",
+      "import": "./dist/blockstore-opfs.js",
       "types": "./dist/src/index.d.ts"
     }
   },
@@ -41,7 +40,7 @@
     "test:aegir:firefox": "aegir test -- --browser firefox",
     "test:aegir:chromium": "aegir test -- --browser chromium",
     "test:aegir:webkit": "aegir test -- --browser webkit",
-    "build:worker": "rm -rf dist-worker && tsc && vite build --config vite.worker.config.js && sed '1s/^/export const workerScript = `/; 1!s/\\\\/\\\\\\\\/g; 1!s/`/\\\\`/g; 1!s/\\${/\\\\${/g; $s/$/`;/' dist-worker/opfs-worker.js > src/opfs-worker.js",
+    "build:worker": "rm -rf dist-worker && tsc && vite build --config vite.worker.config.js && sed '1s/^/export const workerScript = `/; 1!s/\\\\/\\\\\\\\/g; 1!s/`/\\\\`/g; 1!s/\\${/\\\\${/g; $s/$/`;/' dist-worker/opfs-worker.js > src/opfs-worker.ts",
     "build": "rm -rf dist && npm run build:worker && vite build --config vite.config.js",
     "lint": "aegir lint --fix"
   },

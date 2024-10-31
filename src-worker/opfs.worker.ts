@@ -9,11 +9,11 @@ self.addEventListener('message', (event) => {
   handleMessage(event).catch((error: any) => {
     self.postMessage(
       {
-        id: event.data.id,
+        id: event?.data?.id,
         error,
-        errorName: error.name,
-        errorMessage: error.message,
-        errorStack: error.stack
+        errorName: error?.name,
+        errorMessage: error?.message,
+        errorStack: error?.stack
       }
     )
   })
@@ -100,6 +100,7 @@ async function handleMessage (event: MessageEvent): Promise<void> {
       break
     }
 
+    // These methods are handled in the wrapper opposed to the worker itself
     case 'getMany':
       throw new Error('getMany not implemented')
 

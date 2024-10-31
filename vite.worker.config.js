@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, 'src-worker/opfs.worker.ts'),
-      formats: ['es', 'cjs'],
+      formats: ['es'],
       name: 'OPFSWorker',
       fileName: 'opfs-worker'
     },
