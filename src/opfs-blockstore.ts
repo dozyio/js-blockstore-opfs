@@ -57,7 +57,7 @@ export class OPFSBlockstore implements Blockstore {
     }
 
     this.worker.onmessage = (event) => {
-      console.log(this.workerPendingRequests)
+      // console.log(this.workerPendingRequests)
       const { id, result, error, errorName, errorMessage, errorStack } = event.data
       const request = this.workerPendingRequests.get(id)
       if (request === undefined) {
@@ -71,6 +71,7 @@ export class OPFSBlockstore implements Blockstore {
         return
       }
 
+      // eslint-disable-next-line no-console
       console.log('worker request rejected', id, result, errorName)
       request.reject({ name: errorName, message: errorMessage, stack: errorStack })
     }
@@ -113,7 +114,6 @@ export class OPFSBlockstore implements Blockstore {
    */
   async put (key: CID, val: Uint8Array): Promise<CID> {
     // eslint-disable-next-line no-console
-    console.log('put (BS)', key.toString())
     return this.callWorker('put', { key: key.toString(), value: val })
   }
 
