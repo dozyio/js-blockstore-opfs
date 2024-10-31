@@ -1,6 +1,6 @@
 {
   "name": "blockstore-opfs",
-  "version": "0.0.4-alpha.9",
+  "version": "0.0.4-alpha.10",
   "module": "./dist/blockstore-opfs.js",
   "type": "module",
   "keywords": [],
