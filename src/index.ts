@@ -1,7 +1,5 @@
 // src/index.ts
+import { type OPFSBlockstoreInit, OPFSBlockstore } from './opfs-blockstore'
+import { workerScript } from './opfs-worker'
 
-import { OPFSMainThreadFS } from './main-thread-fs.js'
-import { type OPFSBlockstoreInit, OPFSBlockstore } from './opfs-blockstore.js'
-import { OPFSWebWorkerFS } from './web-worker-fs.js'
-
-export { type OPFSBlockstoreInit, OPFSBlockstore, OPFSMainThreadFS, OPFSWebWorkerFS }
+export { type OPFSBlockstoreInit, OPFSBlockstore, workerScript }

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 // src/web-worker-fs.ts
 import { type Blockstore, type Pair } from 'interface-blockstore'
 import { type AwaitIterable, DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
@@ -7,9 +8,9 @@ import { CID } from 'multiformats/cid'
 import type { OPFSBlockstoreInit } from '.'
 
 export class OPFSWebWorkerFS implements Blockstore {
-  private readonly putManyConcurrency: number
-  private readonly getManyConcurrency: number
-  private readonly deleteManyConcurrency: number
+  private putManyConcurrency: number
+  private getManyConcurrency: number
+  private deleteManyConcurrency: number
   private readonly path: string
   private opfsRoot!: FileSystemDirectoryHandle
   private bsRoot!: FileSystemDirectoryHandle
@@ -34,32 +35,71 @@ export class OPFSWebWorkerFS implements Blockstore {
     }
   }
 
-  async close (): Promise<void> {
+  close (): void {
     // noop
   }
 
-  /**
-   * @throws PutFailedError
-   * @throws QuotaExceededError
-   */
-  async put (key: CID, val: ArrayBuffer): Promise<CID> {
-    try {
-      const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: true })
-      // @ts-expect-error: createSyncAccessHandle() is available in web workers
-      const accessHandle = await fileHandle.createSyncAccessHandle()
+  async putWithRetry (
+    putFn: () => Promise<CID>,
+    retries: number = 3,
+    timeoutMs: number = 1000
+  ): Promise<CID> {
+    let attempt = 0
+    const errors: Error[] = []
 
-      const n = accessHandle.write(val, { at: 0 })
-      if (n !== val.byteLength) {
-        accessHandle.close()
-        throw new Error(`write length ${n} !== ${val.byteLength}`)
+    while (attempt < retries) {
+      attempt++
+      try {
+        const timeout = new Promise<CID>((_resolve, reject) =>
+          setTimeout(() => { reject(new PutFailedError('Operation timed out')) }, timeoutMs)
+        )
+
+        const result = await Promise.race([putFn(), timeout])
+        return result
+      } catch (err) {
+        errors.push(err as Error)
+        console.warn(`Attempt ${attempt} failed: ${(err as Error).message}`)
+
+        if (attempt >= retries) {
+          const aggregatedMessage = errors
+            .map((e, idx) => `Attempt ${idx + 1}: ${e.message}`)
+            .join('; ')
+          throw new PutFailedError(`All ${retries} attempts failed: ${aggregatedMessage}`)
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 100)) // add small 100ms delay
       }
-
-      accessHandle.close()
-
-      return key
-    } catch (err) {
-      throw new PutFailedError(String(err))
     }
+
+    // This point should never be reached
+    throw new PutFailedError('Unexpected error in putWithRetry')
+  }
+
+  async put (key: CID, val: ArrayBuffer): Promise<CID> {
+    // Define the actual put operation as a function
+    const putOperation = async (): Promise<CID> => {
+      try {
+        const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: true })
+
+        // @ts-expect-error: createSyncAccessHandle() is available in web workers
+        const accessHandle = await fileHandle.createSyncAccessHandle()
+
+        const bytesWritten = accessHandle.write(val, { at: 0 })
+        if (bytesWritten !== val.byteLength) {
+          accessHandle.close()
+          throw new PutFailedError(`write length ${bytesWritten} !== ${val.byteLength}`)
+        }
+
+        accessHandle.close()
+
+        return key
+      } catch (err) {
+        throw new PutFailedError(String(err))
+      }
+    }
+
+    // Use the retry wrapper
+    return this.putWithRetry(putOperation, 3, 1000)
   }
 
   async * putMany (source: AwaitIterable<Pair>): AsyncIterable<CID> {
@@ -107,17 +147,57 @@ export class OPFSWebWorkerFS implements Blockstore {
     )
   }
 
+  async deleteWithRetry (
+    deleteFn: () => Promise<void>,
+    retries: number = 3,
+    timeoutMs: number = 1000
+  ): Promise<void> {
+    let attempt = 0
+    const errors: Error[] = []
+
+    while (attempt < retries) {
+      attempt++
+      try {
+        const timeout = new Promise<void>((_resolve, reject) =>
+          setTimeout(() => { reject(new DeleteFailedError('Operation timed out')) }, timeoutMs)
+        )
+
+        await Promise.race([deleteFn(), timeout])
+        return
+      } catch (err) {
+        errors.push(err as Error)
+        console.warn(`Attempt ${attempt} failed: ${(err as Error).message}`)
+
+        if (attempt >= retries) {
+          const aggregatedMessage = errors
+            .map((e, idx) => `Attempt ${idx + 1}: ${e.message}`)
+            .join('; ')
+          throw new DeleteFailedError(`All ${retries} attempts failed: ${aggregatedMessage}`)
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 100)) // add small 100ms delay
+      }
+    }
+
+    // This point should never be reached
+    throw new DeleteFailedError('Unexpected error in deleteWithRetry')
+  }
+
   /**
    * Deletes a block by its CID.
    *
    * @param key - CID.
    */
   async delete (key: CID): Promise<void> {
-    try {
-      await this.bsRoot.removeEntry(key.toString())
-    } catch (err) {
-      throw new DeleteFailedError(String(err))
+    const deleteOperation = async (): Promise<void> => {
+      try {
+        await this.bsRoot.removeEntry(key.toString())
+      } catch (err) {
+        throw new DeleteFailedError(String(err))
+      }
     }
+
+    return this.deleteWithRetry(deleteOperation, 3, 1000)
   }
 
   async * deleteMany (source: AwaitIterable<CID>): AsyncIterable<CID> {
@@ -174,7 +254,9 @@ export class OPFSWebWorkerFS implements Blockstore {
 
             accessHandle.close()
 
-            yield { cid, block: new Uint8Array(dataView.buffer) }
+            yield {
+              cid, block: new Uint8Array(dataView.buffer)
+            }
           } catch (err) {
             throw new GetFailedError(String(err))
           }
@@ -192,5 +274,28 @@ export class OPFSWebWorkerFS implements Blockstore {
     } else {
       await this.opfsRoot.removeEntry(this.path, { recursive: true })
     }
+  }
+
+  async ls (): Promise<string[]> {
+    const keys: string[] = []
+
+    // @ts-expect-error: this.bsRoot.entries() is a thing
+    for await (const [name] of this.bsRoot) {
+      keys.push(name)
+    }
+
+    return keys
+  }
+
+  setPutManyConcurrency (concurrency: number): void {
+    this.putManyConcurrency = concurrency
+  }
+
+  setGetManyConcurrency (concurrency: number): void {
+    this.getManyConcurrency = concurrency
+  }
+
+  setDeleteManyConcurrency (concurrency: number): void {
+    this.deleteManyConcurrency = concurrency
   }
 }

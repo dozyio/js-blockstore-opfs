@@ -1,4 +1,3 @@
-src/index-webworker-WIP.ts
 playwright.config.js
 src/setup.ts
 dist/test
@@ -6,4 +5,5 @@ dist/test
 .gitignore
 .prettierignore
 dist/setup.js
-dist/index-webworker-WIP.js
+playwright.config.ts
+tsconfig.tsbuildinfo
