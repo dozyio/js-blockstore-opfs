@@ -777,7 +777,7 @@ class Ze {
     a(this, "path");
     a(this, "opfsRoot");
     a(this, "bsRoot");
-    this.deleteManyConcurrency = t.deleteManyConcurrency ?? 1, this.getManyConcurrency = t.getManyConcurrency ?? 1, this.putManyConcurrency = t.putManyConcurrency ?? 1, this.path = e;
+    this.deleteManyConcurrency = t.deleteManyConcurrency ?? 50, this.getManyConcurrency = t.getManyConcurrency ?? 50, this.putManyConcurrency = t.putManyConcurrency ?? 50, this.path = e;
   }
   async open() {
     try {

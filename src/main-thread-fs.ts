@@ -1,5 +1,6 @@
 // src/main-thread-fs.ts
-// Deprecated in favour of the web worker which works with webkit
+
+// Deprecated in favour of the web worker which works with webkit browsers
 import { type Blockstore, type Pair } from 'interface-blockstore'
 import { type AwaitIterable, DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
 import map from 'it-map'
