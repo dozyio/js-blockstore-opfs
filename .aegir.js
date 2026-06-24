@@ -1,9 +1,17 @@
 /** @type {import('aegir').PartialOptions} */
 export default {
-  test: {
-    files: [
-      'test/**/blockstore-tests.spec.ts'
+  dependencyCheck: {
+    ignore: [
+      'playwright-test'
     ],
-    target: ['browser', 'webworker']
+    productionIgnorePatterns: [
+      '/benchmark',
+      '/dist',
+      '/test',
+      '.aegir.js',
+      'playwright.config.ts',
+      'vite.config.js',
+      'vite.worker.config.js'
+    ]
   }
 }

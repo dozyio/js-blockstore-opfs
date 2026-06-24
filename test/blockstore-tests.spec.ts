@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { expect } from 'aegir/chai'
 import { interfaceBlockstoreTests } from 'interface-blockstore-tests'
 import { OPFSBlockstore } from '../src/index'

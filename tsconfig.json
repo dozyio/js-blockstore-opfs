@@ -1,5 +1,5 @@
 {
-  "extends": "aegir/src/config/tsconfig.aegir.json",
+  "extends": "./node_modules/aegir/src/config/tsconfig.aegir.json",
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
@@ -17,5 +17,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "src-worker", "test"]
+  "include": ["src", "src-worker", "test", "benchmark", "playwright.config.ts"]
 }

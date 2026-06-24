@@ -1,4 +1,5 @@
-import { type PlaywrightTestConfig, devices } from '@playwright/test'
+import { devices } from '@playwright/test'
+import type { PlaywrightTestConfig } from '@playwright/test'
 
 const config: PlaywrightTestConfig = {
   projects: [
@@ -24,7 +25,7 @@ const config: PlaywrightTestConfig = {
   webServer: {
     command: 'npx vite',
     port: 3000,
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+
     reuseExistingServer: !process.env.CI
   },
   workers: 1

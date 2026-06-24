@@ -1,11 +1,13 @@
 /* eslint-disable no-console */
 // src/web-worker-fs.ts
-import { type Blockstore, type Pair } from 'interface-blockstore'
-import { type AwaitIterable, DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
+import { DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
 import { CID } from 'multiformats/cid'
+import { asByteStream, throwIfAborted, toArrayBuffer, toUint8Array } from './utils'
 import type { OPFSBlockstoreInit } from '.'
+import type { AbortOptions, AwaitIterable } from './utils'
+import type { Blockstore, InputPair, Pair } from 'interface-blockstore'
 
 export class OPFSWebWorkerFS implements Blockstore {
   private putManyConcurrency: number
@@ -75,19 +77,22 @@ export class OPFSWebWorkerFS implements Blockstore {
     throw new PutFailedError('Unexpected error in putWithRetry')
   }
 
-  async put (key: CID, val: ArrayBuffer): Promise<CID> {
+  async put (key: CID, val: Uint8Array | Iterable<Uint8Array> | AsyncIterable<Uint8Array>, options?: AbortOptions): Promise<CID> {
+    throwIfAborted(options)
+
     // Define the actual put operation as a function
     const putOperation = async (): Promise<CID> => {
       try {
         const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: true })
+        const buffer = toArrayBuffer(await toUint8Array(val))
 
         // @ts-expect-error: createSyncAccessHandle() is available in web workers
         const accessHandle = await fileHandle.createSyncAccessHandle()
 
-        const bytesWritten = accessHandle.write(val, { at: 0 })
-        if (bytesWritten !== val.byteLength) {
+        const bytesWritten = accessHandle.write(buffer, { at: 0 })
+        if (bytesWritten !== buffer.byteLength) {
           accessHandle.close()
-          throw new PutFailedError(`write length ${bytesWritten} !== ${val.byteLength}`)
+          throw new PutFailedError(`write length ${bytesWritten} !== ${buffer.byteLength}`)
         }
 
         accessHandle.close()
@@ -102,11 +107,13 @@ export class OPFSWebWorkerFS implements Blockstore {
     return this.putWithRetry(putOperation, 3, 1000)
   }
 
-  async * putMany (source: AwaitIterable<Pair>): AsyncIterable<CID> {
+  async * putMany (source: AwaitIterable<InputPair>, options?: AbortOptions): AsyncGenerator<CID> {
+    throwIfAborted(options)
+
     yield * parallelBatch(
-      map(source, ({ cid, block }) => {
+      map(source, ({ cid, bytes }) => {
         return async () => {
-          await this.put(cid, block)
+          await this.put(cid, bytes, options)
 
           return cid
         }
@@ -115,7 +122,13 @@ export class OPFSWebWorkerFS implements Blockstore {
     )
   }
 
-  async get (key: CID): Promise<Uint8Array> {
+  get (key: CID, options?: AbortOptions): AsyncGenerator<Uint8Array> {
+    throwIfAborted(options)
+
+    return asByteStream(this.getBytes(key))
+  }
+
+  private async getBytes (key: CID): Promise<Uint8Array> {
     try {
       const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: false })
       // @ts-expect-error: createSyncAccessHandle() is available in web workers
@@ -133,13 +146,15 @@ export class OPFSWebWorkerFS implements Blockstore {
     }
   }
 
-  async * getMany (source: AwaitIterable<CID>): AsyncIterable<Pair> {
+  async * getMany (source: AwaitIterable<CID>, options?: AbortOptions): AsyncGenerator<Pair> {
+    throwIfAborted(options)
+
     yield * parallelBatch(
       map(source, key => {
         return async () => {
           return {
             cid: key,
-            block: await this.get(key)
+            bytes: this.get(key, options)
           }
         }
       }),
@@ -188,7 +203,9 @@ export class OPFSWebWorkerFS implements Blockstore {
    *
    * @param key - CID.
    */
-  async delete (key: CID): Promise<void> {
+  async delete (key: CID, options?: AbortOptions): Promise<void> {
+    throwIfAborted(options)
+
     const deleteOperation = async (): Promise<void> => {
       try {
         await this.bsRoot.removeEntry(key.toString())
@@ -200,11 +217,13 @@ export class OPFSWebWorkerFS implements Blockstore {
     return this.deleteWithRetry(deleteOperation, 3, 1000)
   }
 
-  async * deleteMany (source: AwaitIterable<CID>): AsyncIterable<CID> {
+  async * deleteMany (source: AwaitIterable<CID>, options?: AbortOptions): AsyncGenerator<CID> {
+    throwIfAborted(options)
+
     yield * parallelBatch(
       map(source, key => {
         return async () => {
-          await this.delete(key)
+          await this.delete(key, options)
 
           return key
         }
@@ -219,7 +238,9 @@ export class OPFSWebWorkerFS implements Blockstore {
    * @param key - The original CID.
    * @returns A boolean indicating existence.
    */
-  async has (key: CID): Promise<boolean> {
+  async has (key: CID, options?: AbortOptions): Promise<boolean> {
+    throwIfAborted(options)
+
     try {
       await this.bsRoot.getFileHandle(key.toString(), { create: false })
     } catch (e) {
@@ -229,16 +250,16 @@ export class OPFSWebWorkerFS implements Blockstore {
     return true
   }
 
-  async * getAll (): AsyncIterable<Pair> {
+  async * getAll (options?: AbortOptions): AsyncGenerator<Pair> {
+    throwIfAborted(options)
+
     try {
-      // @ts-expect-error: this.bsRoot.entries() is a thing
       for await (const [name, handle] of this.bsRoot.entries()) {
         if (handle.kind === 'file') {
           let cid: CID
           try {
             cid = CID.parse(name)
           } catch (e) {
-            // eslint-disable-next-line no-console
             console.warn(`Skipping invalid CID filename: ${name}`)
             continue
           }
@@ -255,7 +276,7 @@ export class OPFSWebWorkerFS implements Blockstore {
             accessHandle.close()
 
             yield {
-              cid, block: new Uint8Array(dataView.buffer)
+              cid, bytes: asByteStream(new Uint8Array(dataView.buffer))
             }
           } catch (err) {
             throw new GetFailedError(String(err))
@@ -279,7 +300,6 @@ export class OPFSWebWorkerFS implements Blockstore {
   async ls (): Promise<string[]> {
     const keys: string[] = []
 
-    // @ts-expect-error: this.bsRoot.entries() is a thing
     for await (const [name] of this.bsRoot) {
       keys.push(name)
     }
