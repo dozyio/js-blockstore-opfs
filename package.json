@@ -1,17 +1,37 @@
 {
   "name": "blockstore-opfs",
   "version": "0.1.0",
-  "module": "./dist/blockstore-opfs.js",
-  "type": "module",
-  "keywords": [],
-  "author": "dozyio",
-  "license": "MIT",
   "description": "OPFS Blockstore for IPFS / Helia",
+  "license": "MIT",
+  "homepage": "https://github.com/dozyio/js-blockstore-opfs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dozyio/js-blockstore-opfs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dozyio/js-blockstore-opfs/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "blockstore",
+    "opfs",
+    "ipfs",
+    "helia",
+    "browser"
+  ],
+  "author": "dozyio",
+  "type": "module",
+  "module": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
   "files": [
     "!src/index-webworker-WIP.ts",
     "src",
     "dist",
+    "!dist/benchmark",
+    "!dist/playwright.config.*",
     "!playwright.config.js",
     "!src/setup.ts",
     "!dist/test",
@@ -21,47 +41,148 @@
   ],
   "exports": {
     ".": {
-      "import": "./dist/blockstore-opfs.js",
+      "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
     }
   },
-  "eslintConfig": {
-    "extends": "ipfs",
-    "parserOptions": {
-      "project": true,
-      "sourceType": "module"
-    }
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      [
+        "@semantic-release/commit-analyzer",
+        {
+          "preset": "conventionalcommits",
+          "releaseRules": [
+            {
+              "breaking": true,
+              "release": "major"
+            },
+            {
+              "revert": true,
+              "release": "patch"
+            },
+            {
+              "type": "feat",
+              "release": "minor"
+            },
+            {
+              "type": "fix",
+              "release": "patch"
+            },
+            {
+              "type": "docs",
+              "release": "patch"
+            },
+            {
+              "type": "chore",
+              "release": "patch"
+            },
+            {
+              "type": "test",
+              "release": "patch"
+            },
+            {
+              "type": "deps",
+              "release": "patch"
+            },
+            {
+              "scope": "no-release",
+              "release": false
+            }
+          ]
+        }
+      ],
+      [
+        "@semantic-release/release-notes-generator",
+        {
+          "preset": "conventionalcommits",
+          "presetConfig": {
+            "types": [
+              {
+                "type": "feat",
+                "section": "Features"
+              },
+              {
+                "type": "fix",
+                "section": "Bug Fixes"
+              },
+              {
+                "type": "chore",
+                "section": "Trivial Changes"
+              },
+              {
+                "type": "docs",
+                "section": "Documentation"
+              },
+              {
+                "type": "deps",
+                "section": "Dependencies"
+              },
+              {
+                "type": "test",
+                "section": "Tests"
+              }
+            ]
+          }
+        }
+      ],
+      "@semantic-release/changelog",
+      "@semantic-release/npm",
+      "@semantic-release/github",
+      [
+        "@semantic-release/git",
+        {
+          "assets": [
+            "CHANGELOG.md",
+            "package.json"
+          ]
+        }
+      ]
+    ]
   },
   "scripts": {
+    "clean": "aegir clean",
     "dev": "vite",
     "test": "npm run test:aegir && npm run test:pw",
     "test:pw": "npm run build && playwright test test/blockstore.spec.ts",
     "test:aegir": "npm run test:aegir:chromium && npm run test:aegir:firefox && npm run test:aegir:webkit",
-    "test:aegir:firefox": "aegir test -- --browser firefox",
-    "test:aegir:chromium": "aegir test -- --browser chromium",
-    "test:aegir:webkit": "aegir test -- --browser webkit",
-    "build:worker": "rm -rf dist-worker && tsc && vite build --config vite.worker.config.js && sed '1s/^/export const workerScript = `/; 1!s/\\\\/\\\\\\\\/g; 1!s/`/\\\\`/g; 1!s/\\${/\\\\${/g; $s/$/`;/' dist-worker/opfs-worker.js > src/opfs-worker.ts",
+    "test:aegir:firefox": "aegir test -t browser -t webworker -f test/blockstore-tests.spec.ts -- --browser firefox",
+    "test:aegir:chromium": "aegir test -t browser -t webworker -f test/blockstore-tests.spec.ts -- --browser chromium",
+    "test:aegir:webkit": "aegir test -t browser -t webworker -f test/blockstore-tests.spec.ts -- --browser webkit",
+    "benchmark": "npm run build && npm run benchmark:chromium && npm run benchmark:firefox && npm run benchmark:webkit",
+    "benchmark:chromium": "aegir test -t browser -f benchmark/opfs.bench.spec.ts -- --browser chromium --timeout=120000",
+    "benchmark:firefox": "aegir test -t browser -f benchmark/opfs.bench.spec.ts -- --browser firefox --timeout=120000",
+    "benchmark:webkit": "aegir test -t browser -f benchmark/opfs.bench.spec.ts -- --browser webkit --timeout=120000",
+    "build:worker": "rm -rf dist-worker && tsc && vite build --config vite.worker.config.js && sed '1s/^/\\/\\* eslint-disable @stylistic\\/no-tabs \\*\\/\\nexport const workerScript = `/; 1!s/\\\\/\\\\\\\\/g; 1!s/`/\\\\`/g; 1!s/\\${/\\\\${/g; $s/$/`;/' dist-worker/opfs-worker.js > src/opfs-worker.ts",
     "build": "rm -rf dist && npm run build:worker && vite build --config vite.config.js",
+    "prepack": "npm run build",
+    "release": "aegir release",
+    "dep-check": "aegir dep-check",
+    "doc-check": "aegir doc-check",
+    "docs": "aegir docs",
     "lint": "aegir lint --fix"
   },
   "dependencies": {
-    "interface-blockstore": "^5.3.1",
-    "interface-store": "^6.0.2",
-    "it-map": "^3.1.1",
-    "it-parallel-batch": "^3.0.6",
-    "multiformats": "^13.3.0"
+    "abort-error": "^1.0.2",
+    "interface-blockstore": "^7.0.1",
+    "interface-store": "^8.0.0",
+    "it-map": "^3.1.6",
+    "it-parallel-batch": "^3.0.11",
+    "multiformats": "^14.0.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.0",
-    "@types/mocha": "^10.0.9",
-    "aegir": "^44.1.4",
-    "globals": "^15.11.0",
-    "interface-blockstore-tests": "^7.0.1",
-    "playwright": "^1.48.0",
-    "simple-worker-vite": "^0.3.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.9",
-    "vite-plugin-dts": "^4.2.4"
-  }
+    "@playwright/test": "^1.61.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^26.0.1",
+    "aegir": "^48.0.13",
+    "interface-blockstore-tests": "^9.0.1",
+    "playwright": "^1.61.1",
+    "playwright-test": "^14.1.13",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0",
+    "vite-plugin-dts": "^5.0.3"
+  },
+  "sideEffects": false
 }

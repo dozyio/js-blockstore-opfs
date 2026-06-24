@@ -1,5 +1,7 @@
 // src/opfs-worker.ts
 import { OPFSWebWorkerFS } from '../src/web-worker-fs'
+import { toArrayBuffer, toUint8Array } from '../src/utils'
+import { CID } from 'multiformats/cid'
 
 let store: OPFSWebWorkerFS | undefined
 
@@ -44,7 +46,7 @@ async function handleMessage (event: MessageEvent): Promise<void> {
         throw new Error('store is not open')
       }
 
-      const result = await store.put(params.key, params.value)
+      const result = await store.put(CID.parse(params.key), new Uint8Array(params.value))
       self.postMessage({ id, result })
       break
     }
@@ -54,8 +56,8 @@ async function handleMessage (event: MessageEvent): Promise<void> {
         throw new Error('store is not open')
       }
 
-      const result = await store.get(params.key)
-      self.postMessage({ id, result }, { transfer: [result.buffer] })
+      const result = toArrayBuffer(await toUint8Array(store.get(CID.parse(params.key))))
+      self.postMessage({ id, result }, { transfer: [result] })
       break
     }
 
@@ -64,7 +66,7 @@ async function handleMessage (event: MessageEvent): Promise<void> {
         throw new Error('store is not open')
       }
 
-      await store.delete(params.key)
+      await store.delete(CID.parse(params.key))
       self.postMessage({ id, result: null })
       break
     }
@@ -84,7 +86,7 @@ async function handleMessage (event: MessageEvent): Promise<void> {
         throw new Error('store is not open')
       }
 
-      const result = await store.has(params.key)
+      const result = await store.has(CID.parse(params.key))
       self.postMessage({ id, result })
       break
     }

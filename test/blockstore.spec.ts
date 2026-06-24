@@ -4,7 +4,6 @@ test.describe('OPFSBlockstore', () => {
   const pageMainThread = 'http://localhost:3000/test/blockstore.html'
 
   test.beforeEach(async ({ page }) => {
-    // eslint-disable-next-line no-console
     // page.on('console', msg => { console.log(msg.text()) })
 
     await page.goto(pageMainThread)
@@ -13,9 +12,9 @@ test.describe('OPFSBlockstore', () => {
   // skipped to stop thrashing storage
   test.skip('should handle writing more data than the storage quota allows', async ({ page }) => {
     const result = await page.evaluate(async () => {
-      const { OPFSBlockstore } = (window as any)
-      const { CID } = (window as any)
-      const { sha256 } = (window as any)
+      const { OPFSBlockstore } = window as any
+      const { CID } = window as any
+      const { sha256 } = window as any
 
       const store = new OPFSBlockstore('bs')
       await store.open()

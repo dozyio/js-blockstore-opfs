@@ -1,12 +1,14 @@
 // src/main-thread-fs.ts
 
 // Deprecated in favour of the web worker which works with webkit browsers
-import { type Blockstore, type Pair } from 'interface-blockstore'
-import { type AwaitIterable, DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
+import { DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutFailedError } from 'interface-store'
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
 import { CID } from 'multiformats/cid'
+import { asByteStream, throwIfAborted, toArrayBuffer, toUint8Array } from './utils'
 import type { OPFSBlockstoreInit } from '.'
+import type { AbortOptions, AwaitIterable } from './utils'
+import type { Blockstore, InputPair, Pair } from 'interface-blockstore'
 
 export class OPFSMainThreadFS implements Blockstore {
   private readonly putManyConcurrency: number
@@ -21,9 +23,9 @@ export class OPFSMainThreadFS implements Blockstore {
    * @param init - The OPFSBlockstoreInit object.
    */
   constructor (path: string, init: OPFSBlockstoreInit = {}) {
-    this.deleteManyConcurrency = init.deleteManyConcurrency ?? 50
+    this.deleteManyConcurrency = init.deleteManyConcurrency ?? 1
     this.getManyConcurrency = init.getManyConcurrency ?? 50
-    this.putManyConcurrency = init.putManyConcurrency ?? 50
+    this.putManyConcurrency = init.putManyConcurrency ?? 1
     this.path = path
   }
 
@@ -43,16 +45,18 @@ export class OPFSMainThreadFS implements Blockstore {
   /**
    * createWritable unsupported in webkit - https://bugs.webkit.org/show_bug.cgi?id=231706
    *
-   * @throws PutFailedError
-   * @throws QuotaExceededError
+   * @throws {PutFailedError}
+   * @throws {QuotaExceededError}
    */
-  async put (key: CID, val: Uint8Array): Promise<CID> {
+  async put (key: CID, val: Uint8Array | Iterable<Uint8Array> | AsyncIterable<Uint8Array>, options?: AbortOptions): Promise<CID> {
+    throwIfAborted(options)
+
     let writable: FileSystemWritableFileStream | undefined
 
     try {
       const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: true })
       writable = await fileHandle.createWritable()
-      await writable.write(val)
+      await writable.write(toArrayBuffer(await toUint8Array(val)))
       await writable.close()
     } catch (err) {
       await writable?.abort()
@@ -63,14 +67,16 @@ export class OPFSMainThreadFS implements Blockstore {
   }
 
   /**
-   * @throws PutFailedError
-   * @throws QuotaExceededError
+   * @throws {PutFailedError}
+   * @throws {QuotaExceededError}
    */
-  async * putMany (source: AwaitIterable<Pair>): AsyncIterable<CID> {
+  async * putMany (source: AwaitIterable<InputPair>, options?: AbortOptions): AsyncGenerator<CID> {
+    throwIfAborted(options)
+
     yield * parallelBatch(
-      map(source, ({ cid, block }) => {
+      map(source, ({ cid, bytes }) => {
         return async () => {
-          await this.put(cid, block)
+          await this.put(cid, bytes, options)
 
           return cid
         }
@@ -79,7 +85,13 @@ export class OPFSMainThreadFS implements Blockstore {
     )
   }
 
-  async get (key: CID): Promise<Uint8Array> {
+  get (key: CID, options?: AbortOptions): AsyncGenerator<Uint8Array> {
+    throwIfAborted(options)
+
+    return asByteStream(this.getBytes(key))
+  }
+
+  private async getBytes (key: CID): Promise<Uint8Array> {
     try {
       const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: false })
       const file = await fileHandle.getFile()
@@ -91,13 +103,15 @@ export class OPFSMainThreadFS implements Blockstore {
     }
   }
 
-  async * getMany (source: AwaitIterable<CID>): AsyncIterable<Pair> {
+  async * getMany (source: AwaitIterable<CID>, options?: AbortOptions): AsyncGenerator<Pair> {
+    throwIfAborted(options)
+
     yield * parallelBatch(
       map(source, key => {
         return async () => {
           return {
             cid: key,
-            block: await this.get(key)
+            bytes: this.get(key, options)
           }
         }
       }),
@@ -110,7 +124,9 @@ export class OPFSMainThreadFS implements Blockstore {
    *
    * @param key - CID.
    */
-  async delete (key: CID): Promise<void> {
+  async delete (key: CID, options?: AbortOptions): Promise<void> {
+    throwIfAborted(options)
+
     try {
       await this.bsRoot.removeEntry(key.toString())
     } catch (err) {
@@ -118,11 +134,13 @@ export class OPFSMainThreadFS implements Blockstore {
     }
   }
 
-  async * deleteMany (source: AwaitIterable<CID>): AsyncIterable<CID> {
+  async * deleteMany (source: AwaitIterable<CID>, options?: AbortOptions): AsyncGenerator<CID> {
+    throwIfAborted(options)
+
     yield * parallelBatch(
       map(source, key => {
         return async () => {
-          await this.delete(key)
+          await this.delete(key, options)
 
           return key
         }
@@ -137,7 +155,9 @@ export class OPFSMainThreadFS implements Blockstore {
    * @param key - The original CID.
    * @returns A boolean indicating existence.
    */
-  async has (key: CID): Promise<boolean> {
+  async has (key: CID, options?: AbortOptions): Promise<boolean> {
+    throwIfAborted(options)
+
     try {
       await this.bsRoot.getFileHandle(key.toString(), { create: false })
     } catch (e) {
@@ -149,9 +169,10 @@ export class OPFSMainThreadFS implements Blockstore {
 
   /**
    */
-  async * getAll (): AsyncIterable<Pair> {
+  async * getAll (options?: AbortOptions): AsyncGenerator<Pair> {
+    throwIfAborted(options)
+
     try {
-      // @ts-expect-error: this.bsRoot.entries() is a thing
       for await (const [name, handle] of this.bsRoot.entries()) {
         if (handle.kind === 'file') {
           let cid: CID
@@ -167,9 +188,9 @@ export class OPFSMainThreadFS implements Blockstore {
             const fileHandle = await this.bsRoot.getFileHandle(name, { create: false })
             const file = await fileHandle.getFile()
             const buffer = await file.arrayBuffer()
-            const block = new Uint8Array(buffer)
+            const bytes = new Uint8Array(buffer)
 
-            yield { cid, block }
+            yield { cid, bytes: asByteStream(bytes) }
           } catch (err) {
             throw new GetFailedError(String(err))
           }

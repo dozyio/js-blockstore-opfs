@@ -6,12 +6,13 @@
  * that uses a web worker to do all the operations.
  */
 
-import { type AwaitIterable } from 'interface-store'
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
 import { CID } from 'multiformats/cid'
 import { workerScript } from './opfs-worker'
-import type { Blockstore, Pair } from 'interface-blockstore'
+import { asByteStream, throwIfAborted, toArrayBuffer, toUint8Array } from './utils'
+import type { AbortOptions, AwaitIterable } from './utils'
+import type { Blockstore, InputPair, Pair } from 'interface-blockstore'
 
 export interface OPFSBlockstoreInit {
   /**
@@ -44,9 +45,9 @@ export class OPFSBlockstore implements Blockstore {
 
   constructor (path: string, opts?: OPFSBlockstoreInit) {
     this.path = path
-    this._putManyConcurrency = opts?.putManyConcurrency ?? 50
+    this._putManyConcurrency = opts?.putManyConcurrency ?? 1
     this._getManyConcurrency = opts?.getManyConcurrency ?? 50
-    this._deleteManyConcurrency = opts?.deleteManyConcurrency ?? 50
+    this._deleteManyConcurrency = opts?.deleteManyConcurrency ?? 1
 
     try {
       const blob = new Blob([workerScript], { type: 'text/javascript' })
@@ -77,18 +78,18 @@ export class OPFSBlockstore implements Blockstore {
     }
   }
 
-  private async callWorker (method: string, params: any): Promise<any> {
+  private async callWorker (method: string, params: any, transfer: Transferable[] = []): Promise<any> {
     return new Promise((resolve, reject) => {
       const id = this.requestId++
       this.workerPendingRequests.set(id, { resolve, reject })
-      this.worker.postMessage({ id, method, params }, [params].filter((x) => x instanceof ArrayBuffer))
+      this.worker.postMessage({ id, method, params }, transfer)
     })
   }
 
   /**
    * Opens the blockstore.
    *
-   * @throws OpenFailedError
+   * @throws {OpenFailedError}
    */
   async open (): Promise<void> {
     await this.callWorker('open', {
@@ -109,25 +110,31 @@ export class OPFSBlockstore implements Blockstore {
   /**
    * Puts a block by its CID.
    *
-   * @throws PutFailedError
-   * @throws QuotaExceededError
+   * @throws {PutFailedError}
+   * @throws {QuotaExceededError}
    */
-  async put (key: CID, val: Uint8Array): Promise<CID> {
-    // eslint-disable-next-line no-console
-    return this.callWorker('put', { key: key.toString(), value: val })
+  async put (key: CID, val: Uint8Array | Iterable<Uint8Array> | AsyncIterable<Uint8Array>, options?: AbortOptions): Promise<CID> {
+    throwIfAborted(options)
+
+    const buffer = toArrayBuffer(await toUint8Array(val), val instanceof Uint8Array)
+    await this.callWorker('put', { key: key.toString(), value: buffer }, [buffer])
+
+    return key
   }
 
   /**
    * Puts multiple blocks.
    *
-   * @throws PutFailedError
-   * @throws QuotaExceededError
+   * @throws {PutFailedError}
+   * @throws {QuotaExceededError}
    */
-  async * putMany (source: AwaitIterable<Pair>): AsyncIterable<CID> {
+  async * putMany (source: AwaitIterable<InputPair>, options?: AbortOptions): AsyncGenerator<CID> {
+    throwIfAborted(options)
+
     yield * parallelBatch(
-      map(source, ({ cid, block }) => {
+      map(source, ({ cid, bytes }) => {
         return async () => {
-          await this.put(cid, block)
+          await this.put(cid, bytes, options)
 
           return cid
         }
@@ -139,24 +146,28 @@ export class OPFSBlockstore implements Blockstore {
   /**
    * Gets a block by its CID.
    *
-   * @throws NotFoundError
+   * @throws {NotFoundError}
    */
-  async get (key: CID): Promise<Uint8Array> {
-    return this.callWorker('get', { key: key.toString() })
+  get (key: CID, options?: AbortOptions): AsyncGenerator<Uint8Array> {
+    throwIfAborted(options)
+
+    return asByteStream(this.callWorker('get', { key: key.toString() }).then((bytes) => new Uint8Array(bytes)))
   }
 
   /**
    * Gets multiple blocks.
    *
-   * @throws NotFoundError
+   * @throws {NotFoundError}
    */
-  async * getMany (source: AwaitIterable<CID>): AsyncIterable<Pair> {
+  async * getMany (source: AwaitIterable<CID>, options?: AbortOptions): AsyncGenerator<Pair> {
+    throwIfAborted(options)
+
     yield * parallelBatch(
       map(source, key => {
         return async () => {
           return {
             cid: key,
-            block: await this.get(key)
+            bytes: this.get(key, options)
           }
         }
       }),
@@ -167,7 +178,9 @@ export class OPFSBlockstore implements Blockstore {
   /**
    * Gets all blocks.
    */
-  async * getAll (): AsyncIterable<Pair> {
+  async * getAll (options?: AbortOptions): AsyncGenerator<Pair> {
+    throwIfAborted(options)
+
     const keys: string[] = await this.callWorker('ls', {})
 
     yield * parallelBatch(
@@ -176,7 +189,7 @@ export class OPFSBlockstore implements Blockstore {
           const cid = CID.parse(key)
           return {
             cid,
-            block: await this.get(cid)
+            bytes: this.get(cid, options)
           }
         }
       }),
@@ -187,22 +200,26 @@ export class OPFSBlockstore implements Blockstore {
   /**
    * Deletes a block by its CID.
    *
-   * @throws DeleteFailedError
+   * @throws {DeleteFailedError}
    */
-  async delete (key: CID): Promise<void> {
+  async delete (key: CID, options?: AbortOptions): Promise<void> {
+    throwIfAborted(options)
+
     return this.callWorker('delete', { key: key.toString() })
   }
 
   /**
    * Deletes multiple blocks.
    *
-   * @throws DeleteFailedError
+   * @throws {DeleteFailedError}
    */
-  async * deleteMany (source: AwaitIterable<CID>): AsyncIterable<CID> {
+  async * deleteMany (source: AwaitIterable<CID>, options?: AbortOptions): AsyncGenerator<CID> {
+    throwIfAborted(options)
+
     yield * parallelBatch(
       map(source, key => {
         return async () => {
-          await this.delete(key)
+          await this.delete(key, options)
 
           return key
         }
@@ -223,7 +240,9 @@ export class OPFSBlockstore implements Blockstore {
    *
    * @returns A boolean indicating existence.
    */
-  async has (key: CID): Promise<boolean> {
+  async has (key: CID, options?: AbortOptions): Promise<boolean> {
+    throwIfAborted(options)
+
     return this.callWorker('has', { key: key.toString() })
   }
 
