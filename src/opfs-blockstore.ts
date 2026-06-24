@@ -45,9 +45,9 @@ export class OPFSBlockstore implements Blockstore {
 
   constructor (path: string, opts?: OPFSBlockstoreInit) {
     this.path = path
-    this._putManyConcurrency = opts?.putManyConcurrency ?? 50
+    this._putManyConcurrency = opts?.putManyConcurrency ?? 1
     this._getManyConcurrency = opts?.getManyConcurrency ?? 50
-    this._deleteManyConcurrency = opts?.deleteManyConcurrency ?? 50
+    this._deleteManyConcurrency = opts?.deleteManyConcurrency ?? 1
 
     try {
       const blob = new Blob([workerScript], { type: 'text/javascript' })

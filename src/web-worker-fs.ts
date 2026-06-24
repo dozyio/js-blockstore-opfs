@@ -22,9 +22,9 @@ export class OPFSWebWorkerFS implements Blockstore {
    * @param init - The OPFSBlockstoreInit object.
    */
   constructor (path: string, init: OPFSBlockstoreInit = {}) {
-    this.deleteManyConcurrency = init.deleteManyConcurrency ?? 50
+    this.deleteManyConcurrency = init.deleteManyConcurrency ?? 1
     this.getManyConcurrency = init.getManyConcurrency ?? 50
-    this.putManyConcurrency = init.putManyConcurrency ?? 50
+    this.putManyConcurrency = init.putManyConcurrency ?? 1
     this.path = path
   }
 
@@ -60,7 +60,6 @@ export class OPFSWebWorkerFS implements Blockstore {
         return result
       } catch (err) {
         errors.push(err as Error)
-        console.warn(`Attempt ${attempt} failed: ${(err as Error).message}`)
 
         if (attempt >= retries) {
           const aggregatedMessage = errors
@@ -89,13 +88,17 @@ export class OPFSWebWorkerFS implements Blockstore {
         // @ts-expect-error: createSyncAccessHandle() is available in web workers
         const accessHandle = await fileHandle.createSyncAccessHandle()
 
-        const bytesWritten = accessHandle.write(buffer, { at: 0 })
-        if (bytesWritten !== buffer.byteLength) {
-          accessHandle.close()
-          throw new PutFailedError(`write length ${bytesWritten} !== ${buffer.byteLength}`)
-        }
+        try {
+          const bytesWritten = accessHandle.write(buffer, { at: 0 })
+          if (bytesWritten !== buffer.byteLength) {
+            throw new PutFailedError(`write length ${bytesWritten} !== ${buffer.byteLength}`)
+          }
 
-        accessHandle.close()
+          accessHandle.truncate(buffer.byteLength)
+          accessHandle.flush()
+        } finally {
+          accessHandle.close()
+        }
 
         return key
       } catch (err) {
@@ -181,7 +184,6 @@ export class OPFSWebWorkerFS implements Blockstore {
         return
       } catch (err) {
         errors.push(err as Error)
-        console.warn(`Attempt ${attempt} failed: ${(err as Error).message}`)
 
         if (attempt >= retries) {
           const aggregatedMessage = errors

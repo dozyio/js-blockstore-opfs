@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  test-linux:
     runs-on: ubuntu-latest
 
     steps:
@@ -36,18 +36,45 @@ jobs:
         run: npm install
 
       - name: Install browsers
-        run: npm exec -- playwright install --with-deps chromium firefox webkit
+        run: npm exec -- playwright install --with-deps chromium firefox
 
       - name: Lint
         run: npm run lint
 
       - name: Test
-        run: npm run test
+        run: npm run build && npm run test:aegir:chromium && npm run test:aegir:firefox && npm run test:pw
+        env:
+          CI: "1"
+
+  test-webkit:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install browsers
+        run: npm exec -- playwright install webkit
+
+      - name: Test WebKit
+        run: npm run test:aegir:webkit
         env:
           CI: "1"
 
   release:
-    needs: test
+    needs:
+      - test-linux
+      - test-webkit
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 

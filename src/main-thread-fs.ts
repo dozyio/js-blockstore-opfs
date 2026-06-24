@@ -23,9 +23,9 @@ export class OPFSMainThreadFS implements Blockstore {
    * @param init - The OPFSBlockstoreInit object.
    */
   constructor (path: string, init: OPFSBlockstoreInit = {}) {
-    this.deleteManyConcurrency = init.deleteManyConcurrency ?? 50
+    this.deleteManyConcurrency = init.deleteManyConcurrency ?? 1
     this.getManyConcurrency = init.getManyConcurrency ?? 50
-    this.putManyConcurrency = init.putManyConcurrency ?? 50
+    this.putManyConcurrency = init.putManyConcurrency ?? 1
     this.path = path
   }
 

@@ -684,7 +684,7 @@ var be = class {
 	opfsRoot;
 	bsRoot;
 	constructor(e, t = {}) {
-		this.deleteManyConcurrency = t.deleteManyConcurrency ?? 50, this.getManyConcurrency = t.getManyConcurrency ?? 50, this.putManyConcurrency = t.putManyConcurrency ?? 50, this.path = e;
+		this.deleteManyConcurrency = t.deleteManyConcurrency ?? 1, this.getManyConcurrency = t.getManyConcurrency ?? 50, this.putManyConcurrency = t.putManyConcurrency ?? 1, this.path = e;
 	}
 	async open() {
 		try {
@@ -704,7 +704,7 @@ var be = class {
 				}, r));
 				return await Promise.race([e(), n]);
 			} catch (e) {
-				if (a.push(e), console.warn(\`Attempt \${i} failed: \${e.message}\`), i >= n) throw new t(\`All \${n} attempts failed: \${a.map((e, t) => \`Attempt \${t + 1}: \${e.message}\`).join("; ")}\`);
+				if (a.push(e), i >= n) throw new t(\`All \${n} attempts failed: \${a.map((e, t) => \`Attempt \${t + 1}: \${e.message}\`).join("; ")}\`);
 				await new Promise((e) => setTimeout(e, 100));
 			}
 		}
@@ -713,9 +713,15 @@ var be = class {
 	async put(e, n, r) {
 		return Y(r), this.putWithRetry(async () => {
 			try {
-				let r = await this.bsRoot.getFileHandle(e.toString(), { create: !0 }), i = Z(await X(n)), a = await r.createSyncAccessHandle(), o = a.write(i, { at: 0 });
-				if (o !== i.byteLength) throw a.close(), new t(\`write length \${o} !== \${i.byteLength}\`);
-				return a.close(), e;
+				let r = await this.bsRoot.getFileHandle(e.toString(), { create: !0 }), i = Z(await X(n)), a = await r.createSyncAccessHandle();
+				try {
+					let e = a.write(i, { at: 0 });
+					if (e !== i.byteLength) throw new t(\`write length \${e} !== \${i.byteLength}\`);
+					a.truncate(i.byteLength), a.flush();
+				} finally {
+					a.close();
+				}
+				return e;
 			} catch (e) {
 				throw new t(String(e));
 			}
@@ -752,7 +758,7 @@ var be = class {
 				await Promise.race([e(), t]);
 				return;
 			} catch (e) {
-				if (a.push(e), console.warn(\`Attempt \${i} failed: \${e.message}\`), i >= t) throw new r(\`All \${t} attempts failed: \${a.map((e, t) => \`Attempt \${t + 1}: \${e.message}\`).join("; ")}\`);
+				if (a.push(e), i >= t) throw new r(\`All \${t} attempts failed: \${a.map((e, t) => \`Attempt \${t + 1}: \${e.message}\`).join("; ")}\`);
 				await new Promise((e) => setTimeout(e, 100));
 			}
 		}
