@@ -1,6 +1,6 @@
 // src/opfs-worker.ts
-import { OPFSWebWorkerFS } from '../src/web-worker-fs'
-import { toArrayBuffer, toUint8Array } from '../src/utils'
+import { OPFSWebWorkerFS } from '../src/web-worker-fs.ts'
+import { toArrayBuffer, toUint8Array } from '../src/utils.ts'
 import { CID } from 'multiformats/cid'
 
 let store: OPFSWebWorkerFS | undefined

@@ -1,6 +1,6 @@
 import { CID } from 'multiformats/cid'
 import { sha256 } from 'multiformats/hashes/sha2'
-import { OPFSBlockstore } from '../src/index'
+import { OPFSBlockstore } from '../src/index.ts'
 
 describe('OPFSBlockstore benchmark', () => {
   it('large writes and reads', async function () {

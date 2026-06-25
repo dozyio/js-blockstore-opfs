@@ -9,9 +9,9 @@
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
 import { CID } from 'multiformats/cid'
-import { workerScript } from './opfs-worker'
-import { asByteStream, throwIfAborted, toArrayBuffer, toUint8Array } from './utils'
-import type { AbortOptions, AwaitIterable } from './utils'
+import { workerScript } from './opfs-worker.ts'
+import { asByteStream, throwIfAborted, toArrayBuffer, toUint8Array } from './utils.ts'
+import type { AbortOptions, AwaitIterable } from './utils.ts'
 import type { Blockstore, InputPair, Pair } from 'interface-blockstore'
 
 export interface OPFSBlockstoreInit {
