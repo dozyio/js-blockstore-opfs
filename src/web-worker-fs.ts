@@ -9,7 +9,7 @@ import type { OPFSBlockstoreInit } from './index.ts'
 import type { AbortOptions, AwaitIterable } from './utils.ts'
 import type { Blockstore, InputPair, Pair } from 'interface-blockstore'
 
-export class OPFSWebWorkerFS implements Blockstore {
+export class OPFSWebWorker implements Blockstore {
   private putManyConcurrency: number
   private getManyConcurrency: number
   private deleteManyConcurrency: number

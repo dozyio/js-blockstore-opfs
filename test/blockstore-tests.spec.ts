@@ -1,6 +1,8 @@
 import { expect } from 'aegir/chai'
 import { interfaceBlockstoreTests } from 'interface-blockstore-tests'
 import { OPFSBlockstore } from '../src/index.ts'
+import { OPFSMainThreadBlockstore } from '../src/opfs-main-thread.ts'
+import { OPFSWebWorkerBlockstore } from '../src/opfs-web-worker.ts'
 
 // const pwOpts = (process.env.PW_OPTIONS != null) ? JSON.parse(process.env.PW_OPTIONS) : {}
 
@@ -10,13 +12,52 @@ describe('interface-blockstore (OPFS Blockstore)', () => {
     try {
       interfaceBlockstoreTests({
         async setup () {
-          const store = new OPFSBlockstore('bs')
+          const store = new OPFSBlockstore('bs-' + Date.now())
           await store.open()
           return store
         },
         async teardown (store: OPFSBlockstore) {
-          await store.deleteAll()
-          store.close()
+          await store.close()
+        }
+      })
+      expect(true).to.be.true()
+    } catch (err: any) {
+      expect(err).to.not.exist()
+    }
+  })
+})
+
+describe('interface-blockstore (Main Thread OPFS Blockstore)', () => {
+  it('OPFS blockstore', async () => {
+    try {
+      interfaceBlockstoreTests({
+        async setup () {
+          const store = new OPFSMainThreadBlockstore('bs-' + Date.now())
+          await store.open()
+          return store
+        },
+        async teardown (store: OPFSMainThreadBlockstore) {
+          await store.close()
+        }
+      })
+      expect(true).to.be.true()
+    } catch (err: any) {
+      expect(err).to.not.exist()
+    }
+  })
+})
+
+describe('interface-blockstore (WebWorker backed OPFS Blockstore)', () => {
+  it('OPFS blockstore', async () => {
+    try {
+      interfaceBlockstoreTests({
+        async setup () {
+          const store = new OPFSWebWorkerBlockstore('bs-' + Date.now())
+          await store.open()
+          return store
+        },
+        async teardown (store: OPFSWebWorkerBlockstore) {
+          await store.close()
         }
       })
       expect(true).to.be.true()

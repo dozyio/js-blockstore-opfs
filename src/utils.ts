@@ -49,3 +49,15 @@ export function toArrayBuffer (bytes: Uint8Array, forceCopy: boolean = false): A
 export async function * asByteStream (bytes: Uint8Array | Promise<Uint8Array>): AsyncGenerator<Uint8Array> {
   yield await bytes
 }
+
+export function supportsWorkers (): boolean {
+  return Boolean(globalThis.Worker)
+}
+
+export function isOpenable <T> (obj: any): obj is T & { open(): void | Promise<void> } {
+  return typeof obj.open === 'function'
+}
+
+export function isClosable <T> (obj: any): obj is T & { close(): void | Promise<void> } {
+  return typeof obj.close === 'function'
+}

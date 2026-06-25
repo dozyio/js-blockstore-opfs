@@ -1,9 +1,9 @@
 // src/opfs-worker.ts
-import { OPFSWebWorkerFS } from '../src/web-worker-fs.ts'
+import { OPFSWebWorker } from '../src/web-worker-fs.ts'
 import { toArrayBuffer, toUint8Array } from '../src/utils.ts'
 import { CID } from 'multiformats/cid'
 
-let store: OPFSWebWorkerFS | undefined
+let store: OPFSWebWorker | undefined
 
 // Event listener with a synchronous handler
 self.addEventListener('message', (event) => {
@@ -122,7 +122,7 @@ async function handleMessage (event: MessageEvent): Promise<void> {
 
 async function handleOpen (id: any, params: any): Promise<void> {
   const { path, getManyConcurrency, putManyConcurrency, deleteManyConcurrency } = params
-  store = new OPFSWebWorkerFS(path)
+  store = new OPFSWebWorker(path)
   await store.open()
 
   if (getManyConcurrency !== undefined) {
