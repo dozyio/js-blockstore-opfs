@@ -5,12 +5,12 @@ import { DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutF
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
 import { CID } from 'multiformats/cid'
-import { asByteStream, throwIfAborted, toArrayBuffer, toUint8Array } from './utils'
-import type { OPFSBlockstoreInit } from '.'
-import type { AbortOptions, AwaitIterable } from './utils'
+import { asByteStream, throwIfAborted, toArrayBuffer } from './utils.ts'
+import type { OPFSBlockstoreInit } from './index.ts'
+import type { AbortOptions, AwaitIterable } from './utils.ts'
 import type { Blockstore, InputPair, Pair } from 'interface-blockstore'
 
-export class OPFSMainThreadFS implements Blockstore {
+export class OPFSMainThreadBlockstore implements Blockstore {
   private readonly putManyConcurrency: number
   private readonly getManyConcurrency: number
   private readonly deleteManyConcurrency: number
@@ -38,7 +38,7 @@ export class OPFSMainThreadFS implements Blockstore {
     }
   }
 
-  close (): void {
+  async close (): Promise<void> {
     // noop
   }
 
@@ -53,13 +53,23 @@ export class OPFSMainThreadFS implements Blockstore {
 
     let writable: FileSystemWritableFileStream | undefined
 
+    if (val instanceof Uint8Array) {
+      val = [val]
+    }
+
     try {
       const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: true })
       writable = await fileHandle.createWritable()
-      await writable.write(toArrayBuffer(await toUint8Array(val)))
+
+      for await (const buf of val) {
+        options?.signal?.throwIfAborted()
+        await writable.write(toArrayBuffer(buf))
+        options?.signal?.throwIfAborted()
+      }
+
       await writable.close()
     } catch (err) {
-      await writable?.abort()
+      await writable?.abort(err)
       throw new PutFailedError(String(err))
     }
 
@@ -85,19 +95,20 @@ export class OPFSMainThreadFS implements Blockstore {
     )
   }
 
-  get (key: CID, options?: AbortOptions): AsyncGenerator<Uint8Array> {
-    throwIfAborted(options)
+  async * get (key: CID, options?: AbortOptions): AsyncGenerator<Uint8Array> {
+    options?.signal?.throwIfAborted()
 
-    return asByteStream(this.getBytes(key))
-  }
-
-  private async getBytes (key: CID): Promise<Uint8Array> {
     try {
-      const fileHandle = await this.bsRoot.getFileHandle(key.toString(), { create: false })
+      const fileHandle = await this.bsRoot.getFileHandle(key.toString(), {
+        create: false
+      })
       const file = await fileHandle.getFile()
-      await file.arrayBuffer()
 
-      return new Uint8Array(await file.arrayBuffer())
+      for await (const buf of file.stream()) {
+        options?.signal?.throwIfAborted()
+        yield buf
+        options?.signal?.throwIfAborted()
+      }
     } catch (err) {
       throw new NotFoundError(String(err))
     }
@@ -160,7 +171,7 @@ export class OPFSMainThreadFS implements Blockstore {
 
     try {
       await this.bsRoot.getFileHandle(key.toString(), { create: false })
-    } catch (e) {
+    } catch {
       return false
     }
 

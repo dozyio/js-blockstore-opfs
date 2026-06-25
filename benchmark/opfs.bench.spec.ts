@@ -1,6 +1,6 @@
 import { CID } from 'multiformats/cid'
 import { sha256 } from 'multiformats/hashes/sha2'
-import { OPFSBlockstore } from '../src/index'
+import { OPFSBlockstore } from '../src/index.ts'
 
 describe('OPFSBlockstore benchmark', () => {
   it('large writes and reads', async function () {
@@ -40,25 +40,21 @@ describe('OPFSBlockstore benchmark', () => {
 
     const results = []
 
-    try {
-      results.push(await timed('put chunked bytes', async () => {
-        for (let i = 0; i < iterations; i++) {
-          const cid = await makeCid(i)
-          cids.push(cid)
-          await store.put(cid, chunkedBytes(i))
-        }
-      }))
+    results.push(await timed('put chunked bytes', async () => {
+      for (let i = 0; i < iterations; i++) {
+        const cid = await makeCid(i)
+        cids.push(cid)
+        await store.put(cid, chunkedBytes(i))
+      }
+    }))
 
-      results.push(await timed('get and drain bytes', async () => {
-        for (const cid of cids) {
-          for await (const _chunk of store.get(cid)) {
-            // drain stream
-          }
+    results.push(await timed('get and drain bytes', async () => {
+      for (const cid of cids) {
+        for await (const _chunk of store.get(cid)) {
+          // drain stream
         }
-      }))
-    } finally {
-      await store.deleteAll()
-    }
+      }
+    }))
 
     console.table(results)
   })
