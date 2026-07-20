@@ -5,9 +5,9 @@ import { DeleteFailedError, GetFailedError, NotFoundError, OpenFailedError, PutF
 import map from 'it-map'
 import parallelBatch from 'it-parallel-batch'
 import { CID } from 'multiformats/cid'
-import { asByteStream, throwIfAborted, toArrayBuffer, toUint8Array } from './utils'
-import type { OPFSBlockstoreInit } from '.'
-import type { AbortOptions, AwaitIterable } from './utils'
+import { asByteStream, throwIfAborted, toArrayBuffer, toUint8Array } from './utils.ts'
+import type { OPFSBlockstoreInit } from './index.ts'
+import type { AbortOptions, AwaitIterable } from './utils.ts'
 import type { Blockstore, InputPair, Pair } from 'interface-blockstore'
 
 export class OPFSMainThreadFS implements Blockstore {

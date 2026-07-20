@@ -1,6 +1,6 @@
 import { expect } from 'aegir/chai'
 import { interfaceBlockstoreTests } from 'interface-blockstore-tests'
-import { OPFSBlockstore } from '../src/index'
+import { OPFSBlockstore } from '../src/index.ts'
 
 // const pwOpts = (process.env.PW_OPTIONS != null) ? JSON.parse(process.env.PW_OPTIONS) : {}
 
