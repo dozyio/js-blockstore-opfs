@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/dozyio/js-blockstore-opfs/compare/v1.0.0...v1.0.1) (2026-07-20)
+
+### Bug Fixes
+
+* import with extensions ([#5](https://github.com/dozyio/js-blockstore-opfs/issues/5)) ([fcdf266](https://github.com/dozyio/js-blockstore-opfs/commit/fcdf266a2a20d205198b23e4be8af64ce803ed7a))
+
 ## 1.0.0 (2026-06-24)
 
 ### Features
